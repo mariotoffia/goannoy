@@ -2,32 +2,35 @@ package distance
 
 import (
 	"math"
+	"unsafe"
 
 	"github.com/mariotoffia/goannoy/random"
 	"github.com/mariotoffia/goannoy/vector"
 )
 
-type AngularDistance[TV VectorType, TR random.RandomTypes] struct{}
+type AngularDistanceImpl[TV VectorType, TR random.RandomTypes] struct{}
 
-func (a *AngularDistance[TV, TR]) NewNode(vectorLength int) *AngularNodeImpl[TV] {
+func (a *AngularDistanceImpl[TV, TR]) NewNode(vectorLength int) *AngularNodeImpl[TV] {
 	return &AngularNodeImpl[TV]{}
 }
 
-// PreProcess implements the `DistancePreprocessor` interface.
-func (a *AngularDistance[TV, TR]) PreProcess(nodes []Node[TV], vectorLength int) {
+// PreProcess implements the `interfaces.DistancePreprocessor` interface.
+func (a *AngularDistanceImpl[TV, TR]) PreProcess(nodes []Node[TV], vectorLength int) {
 	// DO NOTHING
 }
 
-func (a *AngularDistance[TV, TR]) Margin(n *AngularNodeImpl[TV], y [vector.ANNOYLIB_V_ARRAY_SIZE]TV, vectorLength int) TV {
+func (a *AngularDistanceImpl[TV, TR]) Margin(n *AngularNodeImpl[TV], y []TV, vectorLength int) TV {
 	return vector.Dot(n.v, y, vectorLength)
 }
 
 // Side determines which side x or y.
-func (a *AngularDistance[TV, TR]) Side(
+func (a *AngularDistanceImpl[TV, TR]) Side(
 	x *AngularNodeImpl[TV],
-	y [vector.ANNOYLIB_V_ARRAY_SIZE]TV,
+	y []TV,
 	random random.Random[TR],
-	vectorLength int) bool {
+	vectorLength int,
+) bool {
+
 	dotProduct := a.Margin(x, y, vectorLength)
 
 	if dotProduct != 0 {
@@ -37,12 +40,13 @@ func (a *AngularDistance[TV, TR]) Side(
 	return random.NextBool()
 }
 
-func (a *AngularDistance[TV, TR]) CreateSplit(
+func (a *AngularDistanceImpl[TV, TR]) CreateSplit(
 	nodes []Node[TV], vectorLength,
 	s int,
 	random random.Random[TR],
-	n *AngularNodeImpl[TV]) {
-	//
+	n *AngularNodeImpl[TV],
+) {
+
 	p := a.NewNode(vectorLength)
 	q := a.NewNode(vectorLength)
 
@@ -55,22 +59,23 @@ func (a *AngularDistance[TV, TR]) CreateSplit(
 	n.Normalize(vectorLength)
 }
 
-func (a *AngularDistance[TV, TR]) NormalizedDistance(distance TV) TV {
+// NormalizeDistance implements the `interfaces.DistanceNormalizer` interface.
+func (a *AngularDistanceImpl[TV, TR]) NormalizedDistance(distance TV) TV {
 	return TV(math.Sqrt(math.Max(float64(distance), 0)))
 }
 
-func (a *AngularDistance[TV, TR]) PQDistance(distance, margin TV, childNr int) TV {
+func (a *AngularDistanceImpl[TV, TR]) PQDistance(distance, margin TV, childNr int) TV {
 	if childNr == 0 {
 		margin = -margin
 	}
 	return TV(math.Min(float64(distance), float64(margin)))
 }
 
-func (a *AngularDistance[TV, TR]) PQInitialValue() TV {
+func (a *AngularDistanceImpl[TV, TR]) PQInitialValue() TV {
 	return math.MaxFloat32
 }
 
-func (a *AngularDistance[TV, TR]) Name() string {
+func (a *AngularDistanceImpl[TV, TR]) Name() string {
 	return "angular"
 }
 
@@ -94,6 +99,10 @@ func (n *AngularNodeImpl[TV]) CopyNodeTo(dst Node[TV], vectorLength int) {
 	}
 
 	d.norm = n.norm
+}
+
+func (x *AngularNodeImpl[TV]) GetSize() int {
+	return int(unsafe.Sizeof(*x))
 }
 
 func (x *AngularNodeImpl[TV]) Distance(to Node[TV], vectorLength int) TV {

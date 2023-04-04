@@ -6,7 +6,6 @@ import (
 	"github.com/mariotoffia/goannoy/distance"
 	"github.com/mariotoffia/goannoy/interfaces"
 	"github.com/mariotoffia/goannoy/random"
-	"github.com/mariotoffia/goannoy/vector"
 )
 
 // AnnoyIndexImpl is the actual index for all vectors.
@@ -78,7 +77,7 @@ func NewAnnoyIndexImpl[
 // by this function.
 func (idx *AnnoyIndexImpl[S, TV, TRandType, TRand]) AddItem(
 	index S,
-	v [vector.ANNOYLIB_V_ARRAY_SIZE]TV,
+	v []TV,
 ) {
 	if idx.indexLoaded {
 		panic("Can't add items to a loaded index")
@@ -175,7 +174,7 @@ func (idx *AnnoyIndexImpl[TIdx, TV, TRandType, TRand]) makeTree(
 		}
 
 		if len(indices) > 0 {
-			children := [vector.NUM_CHILDREN]int32{}
+			children := [2]int32{}
 			for i, index := range indices {
 				children[i] = int32(index)
 			}

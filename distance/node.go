@@ -3,10 +3,10 @@ package distance
 import "github.com/mariotoffia/goannoy/vector"
 
 type Node[TV VectorType] interface {
-	GetVector() [vector.ANNOYLIB_V_ARRAY_SIZE]TV
-	SetVector(v [vector.ANNOYLIB_V_ARRAY_SIZE]TV)
-	GetChildren() [vector.NUM_CHILDREN]int32
-	SetChildren(c [vector.NUM_CHILDREN]int32)
+	GetVector() []TV
+	SetVector(v []TV)
+	GetChildren() [2]int32
+	SetChildren(c [2]int32)
 	GetNumberOfDescendants() int32
 	SetNumberOfDescendants(n int32)
 	// Normalize will normalize the vector
@@ -19,28 +19,30 @@ type Node[TV VectorType] interface {
 	// Distance calculates the distance from this to the _to_ `Node`.
 	Distance(to Node[TV], vectorLength int) TV
 	IsDataPoint() bool
+	// GetSize returns the size of the implementation in bytes.
+	GetSize() int
 }
 
 // NodeImpl base type for all nodes
 type NodeImpl[TV VectorType] struct {
 	nDescendants int32
-	v            [vector.ANNOYLIB_V_ARRAY_SIZE]TV
-	children     [vector.NUM_CHILDREN]int32
+	v            []TV
+	children     [2]int32
 }
 
-func (n *NodeImpl[TV]) GetVector() [vector.ANNOYLIB_V_ARRAY_SIZE]TV {
+func (n *NodeImpl[TV]) GetVector() []TV {
 	return n.v
 }
 
-func (n *NodeImpl[TV]) SetVector(v [vector.ANNOYLIB_V_ARRAY_SIZE]TV) {
+func (n *NodeImpl[TV]) SetVector(v []TV) {
 	n.v = v
 }
 
-func (n *NodeImpl[TV]) GetChildren() [vector.NUM_CHILDREN]int32 {
+func (n *NodeImpl[TV]) GetChildren() [2]int32 {
 	return n.children
 }
 
-func (n *NodeImpl[TV]) SetChildren(c [vector.NUM_CHILDREN]int32) {
+func (n *NodeImpl[TV]) SetChildren(c [2]int32) {
 	n.children = c
 }
 
