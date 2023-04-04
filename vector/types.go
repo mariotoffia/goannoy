@@ -1,4 +1,4 @@
-package amath
+package vector
 
 type Calculable interface {
 	// The allowed types that may be used in a calculation

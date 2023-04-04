@@ -1,4 +1,4 @@
-package amath
+package vector
 
 import "math"
 
