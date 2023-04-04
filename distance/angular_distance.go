@@ -102,7 +102,7 @@ func (n *AngularNodeImpl[TV]) CopyNodeTo(dst Node[TV], vectorLength int) {
 }
 
 func (x *AngularNodeImpl[TV]) GetSize() int {
-	return int(unsafe.Sizeof(*x))
+	return x.NodeImpl.GetSize() + int(unsafe.Sizeof(x.norm))
 }
 
 func (x *AngularNodeImpl[TV]) Distance(to Node[TV], vectorLength int) TV {

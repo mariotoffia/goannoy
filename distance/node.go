@@ -1,6 +1,10 @@
 package distance
 
-import "github.com/mariotoffia/goannoy/vector"
+import (
+	"unsafe"
+
+	"github.com/mariotoffia/goannoy/vector"
+)
 
 type Node[TV VectorType] interface {
 	GetVector() []TV
@@ -28,6 +32,14 @@ type NodeImpl[TV VectorType] struct {
 	nDescendants int32
 	v            []TV
 	children     [2]int32
+}
+
+func (n *NodeImpl[TV]) GetSize() int {
+	return int(
+		unsafe.Sizeof(n.nDescendants) +
+			unsafe.Sizeof(n.children) +
+			(uintptr(cap(n.v)) * unsafe.Sizeof(n.v[0])),
+	)
 }
 
 func (n *NodeImpl[TV]) GetVector() []TV {
