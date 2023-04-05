@@ -1,21 +1,22 @@
-package distance
+package angular
 
 import (
 	"math"
 	"unsafe"
 
+	"github.com/mariotoffia/goannoy/distance"
 	"github.com/mariotoffia/goannoy/random"
 	"github.com/mariotoffia/goannoy/vector"
 )
 
-type AngularDistanceImpl[TV VectorType, TR random.RandomTypes] struct{}
+type AngularDistanceImpl[TV distance.VectorType, TR random.RandomTypes] struct{}
 
 func (a *AngularDistanceImpl[TV, TR]) NewNode(vectorLength int) *AngularNodeImpl[TV] {
 	return &AngularNodeImpl[TV]{}
 }
 
 // PreProcess implements the `interfaces.DistancePreprocessor` interface.
-func (a *AngularDistanceImpl[TV, TR]) PreProcess(nodes []Node[TV], vectorLength int) {
+func (a *AngularDistanceImpl[TV, TR]) PreProcess(nodes []distance.Node[TV], vectorLength int) {
 	// DO NOTHING
 }
 
@@ -45,7 +46,7 @@ func (a *AngularDistanceImpl[TV, TR]) Side(
 }
 
 func (a *AngularDistanceImpl[TV, TR]) CreateSplit(
-	nodes []Node[TV], vectorLength,
+	nodes []distance.Node[TV], vectorLength,
 	s int,
 	random random.Random[TR],
 	n *AngularNodeImpl[TV],
@@ -54,7 +55,7 @@ func (a *AngularDistanceImpl[TV, TR]) CreateSplit(
 	p := a.NewNode(vectorLength)
 	q := a.NewNode(vectorLength)
 
-	twoMeans[TV](nodes, vectorLength, random, true, p, q)
+	distance.TwoMeans[TV](nodes, vectorLength, random, true, p, q)
 
 	for z := 0; z < vectorLength; z++ {
 		n.v[z] = p.v[z] - q.v[z]
@@ -81,58 +82,4 @@ func (a *AngularDistanceImpl[TV, TR]) PQInitialValue() TV {
 
 func (a *AngularDistanceImpl[TV, TR]) Name() string {
 	return "angular"
-}
-
-// AngularNodeImpl is a `NodeImpl` to be used with `AngularDistance`
-type AngularNodeImpl[TV VectorType] struct {
-	NodeImpl[TV]
-	norm TV
-}
-
-// InitNode will initialize the node by setting the norm to
-// the value based on the distance type.
-func (n *AngularNodeImpl[TV]) InitNode(vectorLength int) {
-	n.norm = vector.DotUnsafe(n.GetRawVector(), n.GetRawVector(), vectorLength)
-}
-
-func (n *AngularNodeImpl[TV]) CopyNodeTo(dst Node[TV], vectorLength int) {
-	d := dst.(*AngularNodeImpl[TV])
-
-	for z := 0; z < vectorLength; z++ {
-		d.v[z] = n.v[z]
-	}
-
-	d.norm = n.norm
-}
-
-func (x *AngularNodeImpl[TV]) Size(vectorLength int) int {
-	return x.NodeImpl.GetSize(vectorLength) + int(unsafe.Sizeof(x.norm))
-}
-
-func (x *AngularNodeImpl[TV]) MaxDescendants() int {
-	return 2
-}
-
-func (x *AngularNodeImpl[TV]) Distance(to Node[TV], vectorLength int) TV {
-	t := to.(*AngularNodeImpl[TV])
-	pp := x.norm
-
-	if pp == 0 {
-		pp = vector.DotUnsafe(x.GetRawVector(), x.GetRawVector(), vectorLength)
-	}
-
-	qq := t.norm
-
-	if qq == 0 {
-		qq = vector.DotUnsafe(t.GetRawVector(), t.GetRawVector(), vectorLength)
-	}
-
-	pq := vector.DotUnsafe(x.GetRawVector(), t.GetRawVector(), vectorLength)
-	ppqq := pp * qq
-
-	if ppqq > 0 {
-		return 2.0 - 2.0*pq/TV(math.Sqrt(float64(ppqq)))
-	}
-	return 2.0
-
 }

@@ -52,11 +52,11 @@ func NewAnnoyIndexImpl[
 	node := nodeFactory.NewNode(vectorLength)
 
 	index := &AnnoyIndexImpl[TV, TRandType, TRand]{
-		vectorLength:   vectorLength,            // _f
-		random:         random,                  // _seed
-		nodeSize:       node.Size(vectorLength), // _s
-		maxDescendants: node.MaxDescendants(),   // _K
-		indexBuilt:     false,                   // _built
+		vectorLength:   vectorLength,                      // _f
+		random:         random,                            // _seed
+		nodeSize:       node.Size(vectorLength),           // _s
+		maxDescendants: node.MaxNumChildren(vectorLength), // _K
+		indexBuilt:     false,                             // _built
 		nodeFactory:    nodeFactory,
 		buildPolicy:    buildPolicy,
 	}
@@ -80,7 +80,7 @@ func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) AddItem(index int, v []TV) {
 
 	node := idx.nodeFactory.NewNode(idx.vectorLength)
 	node.SetNumberOfDescendants(1)
-	node.SetVector(v, idx.vectorLength)
+	node.SetVector(v)
 	node.InitNode(idx.vectorLength)
 
 	idx._nodes = append(idx._nodes, node)
@@ -169,16 +169,14 @@ func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) makeTree(
 		threadedBuildPolicy.LockSharedNodes()
 		m := idx._nodes[item]
 		if isRoot {
-			m.SetNumberOfDescendants(int32(idx._n_items))
+			m.SetNumberOfDescendants(idx._n_items)
 		} else {
-			m.SetNumberOfDescendants(int32(len(indices)))
+			m.SetNumberOfDescendants(len(indices))
 		}
 
 		if len(indices) > 0 {
-			children := []int32{}
-			for i, index := range indices {
-				children[i] = int32(index)
-			}
+			children := make([]int, len(indices))
+			copy(children, indices)
 
 			m.SetChildren(children)
 		}
@@ -187,7 +185,7 @@ func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) makeTree(
 		return item
 	}
 
-	// Add logic for handling split nodes, which is missing in the provided code snippet.
+	// TODO: Add logic for handling split nodes, which is missing in the provided code snippet.
 	return -1
 }
 

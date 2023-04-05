@@ -5,7 +5,7 @@ import (
 	"github.com/mariotoffia/goannoy/vector"
 )
 
-// twoMeans is a helper function
+// TwoMeans is a helper function
 //
 // Note from the author:
 //
@@ -13,7 +13,7 @@ import (
 // can't motivate it well. The basic idea is to keep two centroids and assign
 // points to either one of them. We weight each centroid by the number of points
 // assigned to it, so to balance it.
-func twoMeans[TV VectorType, TR random.RandomTypes](
+func TwoMeans[TV VectorType, TR random.RandomTypes](
 	nodes []Node[TV],
 	vectorLength int,
 	random random.Random[TR],
