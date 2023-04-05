@@ -42,8 +42,8 @@ func twoMeans[TV VectorType, TR random.RandomTypes](
 	p.InitNode(vectorLength)
 	p.InitNode(vectorLength)
 
-	pvec := p.GetVector()
-	qvec := q.GetVector()
+	pvec := p.GetVector(vectorLength)
+	qvec := q.GetVector(vectorLength)
 
 	ic, jc := float64(1), float64(1)
 	for l := 0; l < iterationSteps; l++ {
@@ -54,7 +54,7 @@ func twoMeans[TV VectorType, TR random.RandomTypes](
 
 		var norm TV
 
-		vec := nodes[k].GetVector()
+		vec := nodes[k].GetVector(vectorLength)
 		if cosine {
 			norm = vector.GetNorm(vec, vectorLength)
 

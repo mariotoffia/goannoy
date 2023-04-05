@@ -20,7 +20,11 @@ func (a *AngularDistanceImpl[TV, TR]) PreProcess(nodes []Node[TV], vectorLength 
 }
 
 func (a *AngularDistanceImpl[TV, TR]) Margin(n *AngularNodeImpl[TV], y []TV, vectorLength int) TV {
-	return vector.Dot(n.v, y, vectorLength)
+	if len(y) == 0 {
+		panic("y is empty")
+	}
+
+	return vector.DotUnsafe(n.GetRawVector(), (*TV)(unsafe.Pointer(&y[0])), vectorLength)
 }
 
 // Side determines which side x or y.
@@ -88,7 +92,7 @@ type AngularNodeImpl[TV VectorType] struct {
 // InitNode will initialize the node by setting the norm to
 // the value based on the distance type.
 func (n *AngularNodeImpl[TV]) InitNode(vectorLength int) {
-	n.norm = vector.Dot(n.v, n.v, vectorLength)
+	n.norm = vector.DotUnsafe(n.GetRawVector(), n.GetRawVector(), vectorLength)
 }
 
 func (n *AngularNodeImpl[TV]) CopyNodeTo(dst Node[TV], vectorLength int) {
@@ -101,8 +105,12 @@ func (n *AngularNodeImpl[TV]) CopyNodeTo(dst Node[TV], vectorLength int) {
 	d.norm = n.norm
 }
 
-func (x *AngularNodeImpl[TV]) GetSize() int {
-	return x.NodeImpl.GetSize() + int(unsafe.Sizeof(x.norm))
+func (x *AngularNodeImpl[TV]) Size(vectorLength int) int {
+	return x.NodeImpl.GetSize(vectorLength) + int(unsafe.Sizeof(x.norm))
+}
+
+func (x *AngularNodeImpl[TV]) MaxDescendants() int {
+	return 2
 }
 
 func (x *AngularNodeImpl[TV]) Distance(to Node[TV], vectorLength int) TV {
@@ -110,17 +118,16 @@ func (x *AngularNodeImpl[TV]) Distance(to Node[TV], vectorLength int) TV {
 	pp := x.norm
 
 	if pp == 0 {
-		pp = vector.Dot(x.v, x.v, vectorLength)
+		pp = vector.DotUnsafe(x.GetRawVector(), x.GetRawVector(), vectorLength)
 	}
 
-	yv := t.v
 	qq := t.norm
 
 	if qq == 0 {
-		qq = vector.Dot(yv, yv, vectorLength)
+		qq = vector.DotUnsafe(t.GetRawVector(), t.GetRawVector(), vectorLength)
 	}
 
-	pq := vector.Dot(x.v, yv, vectorLength)
+	pq := vector.DotUnsafe(x.GetRawVector(), t.GetRawVector(), vectorLength)
 	ppqq := pp * qq
 
 	if ppqq > 0 {

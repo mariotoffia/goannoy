@@ -10,7 +10,7 @@ type DistanceNormalizer[TV VectorType] interface {
 
 type DistancePreprocessor[TV VectorType] interface {
 	// PreProcess will pre-process the data before it is used for distance calculations.
-	PreProcess(nodes []Node[TV], vectorLength int)
+	PreProcess(nodes []Node[TV], node_count int, vectorLength int)
 }
 
 type NodeFactory[TV VectorType] interface {

@@ -1,8 +1,6 @@
 package index
 
 import (
-	"fmt"
-
 	"github.com/mariotoffia/goannoy/distance"
 	"github.com/mariotoffia/goannoy/interfaces"
 	"github.com/mariotoffia/goannoy/random"
@@ -19,32 +17,28 @@ import (
 // in such a way that we at most use 2x as much memory as the vectors take.
 
 type AnnoyIndexImpl[
-	TIdx int,
 	TV distance.VectorType,
 	TRandType random.RandomTypes,
 	TRand random.Random[TRandType]] struct {
 	vectorLength int
-	_s           int
+	nodeSize     int
 	// _n_items is how many nodes exists in the index.
-	_n_items     TIdx
-	_nodes       []distance.Node[TV]
-	_n_nodes     TIdx
-	_nodes_size  TIdx
-	_roots       []TIdx
-	_K           TIdx
-	_seed        random.Random[TRandType]
-	indexLoaded  bool
-	_verbose     bool
-	_fd          int
-	_on_disk     bool
-	_built       bool
-	nodeFactory  distance.NodeFactory[TV]
-	preprocessor distance.DistancePreprocessor[TV]
-	buildPolicy  interfaces.AnnoyIndexBuildPolicy
+	_n_items       int
+	_nodes         []distance.Node[TV]
+	_n_nodes       int
+	_nodes_size    int
+	_roots         []int
+	maxDescendants int
+	random         random.Random[TRandType]
+	indexLoaded    bool
+	_on_disk       bool
+	indexBuilt     bool
+	nodeFactory    distance.NodeFactory[TV]
+	preprocessor   distance.DistancePreprocessor[TV]
+	buildPolicy    interfaces.AnnoyIndexBuildPolicy
 }
 
 func NewAnnoyIndexImpl[
-	TIdx int,
 	TV distance.VectorType,
 	TRandType random.RandomTypes,
 	TRand random.Random[TRandType]](
@@ -53,19 +47,18 @@ func NewAnnoyIndexImpl[
 	nodeFactory distance.NodeFactory[TV],
 	preprocessor distance.DistancePreprocessor[TV],
 	buildPolicy interfaces.AnnoyIndexBuildPolicy,
-) *AnnoyIndexImpl[TIdx, TV, TRandType, TRand] {
-	//
-	index := &AnnoyIndexImpl[TIdx, TV, TRandType, TRand]{
-		vectorLength: vectorLength,
-		_seed:        random,
-		_s:           0, // TODO: I think we should skip this to not use unsafe...
-		_verbose:     false,
-		_built:       false,
-		// TODO: (TIdx) (((size_t) (_s - offsetof(Node, children))) / sizeof(TIdx));
-		// TODO: Max number of descendants to fit into node
-		_K:          0,
-		nodeFactory: nodeFactory,
-		buildPolicy: buildPolicy,
+) *AnnoyIndexImpl[TV, TRandType, TRand] {
+	// Create a single node to query it for sizes
+	node := nodeFactory.NewNode(vectorLength)
+
+	index := &AnnoyIndexImpl[TV, TRandType, TRand]{
+		vectorLength:   vectorLength,            // _f
+		random:         random,                  // _seed
+		nodeSize:       node.Size(vectorLength), // _s
+		maxDescendants: node.MaxDescendants(),   // _K
+		indexBuilt:     false,                   // _built
+		nodeFactory:    nodeFactory,
+		buildPolicy:    buildPolicy,
 	}
 
 	index.reinitialize()
@@ -73,44 +66,55 @@ func NewAnnoyIndexImpl[
 	return index
 }
 
+// VectorLength returns the vector length of the index.
+func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) VectorLength() int {
+	return idx.vectorLength
+}
+
 // AddItem adds an item to the index. The ownership of the vector _v_ is taken
 // by this function.
-func (idx *AnnoyIndexImpl[S, TV, TRandType, TRand]) AddItem(
-	index S,
-	v []TV,
-) {
+func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) AddItem(index int, v []TV) {
 	if idx.indexLoaded {
 		panic("Can't add items to a loaded index")
 	}
 
 	node := idx.nodeFactory.NewNode(idx.vectorLength)
 	node.SetNumberOfDescendants(1)
-	node.SetVector(v)
+	node.SetVector(v, idx.vectorLength)
 	node.InitNode(idx.vectorLength)
+
+	idx._nodes = append(idx._nodes, node)
+
+	if index >= idx._n_items {
+		idx._n_items = index + 1
+	}
 }
 
-func (idx *AnnoyIndexImpl[TIdx, TV, TRandType, TRand]) Build(treesPerThread int) {
+func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) Build(treesPerThread int) {
 	if idx.indexLoaded {
 		panic("Can't build a loaded index")
 	}
 
-	if idx._built {
+	if idx.indexBuilt {
 		panic("Index already built")
 	}
 
-	idx.preprocessor.PreProcess(idx._nodes, idx.vectorLength)
+	idx.preprocessor.PreProcess(idx._nodes, idx._n_items, idx.vectorLength)
 	idx._n_nodes = idx._n_items
 
 	idx.buildPolicy.Build(idx, treesPerThread, treesPerThread)
 }
 
-func (idx *AnnoyIndexImpl[TIdx, TV, TRandType, TRand]) ThreadBuild(
+func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) ThreadBuild(
 	treesPerThread, threadIdx int,
-	threadedBuildPolicy interfaces.AnnoyIndexBuildPolicy) {
-	// Each thread needs its own seed, otherwise each thread would be building the same tree(s)
-	rnd := idx._seed.CloneAndReset()
+	threadedBuildPolicy interfaces.AnnoyIndexBuildPolicy,
+) {
+	rnd := idx.random.CloneAndReset()
 
-	var threadRoots []TIdx
+	// Each thread needs its own seed, otherwise each thread would be building the same tree(s)
+	rnd.SetSeed(rnd.GetSeed() + TRandType(threadIdx))
+
+	var threadRoots []int
 
 	for {
 		if treesPerThread == -1 {
@@ -126,14 +130,11 @@ func (idx *AnnoyIndexImpl[TIdx, TV, TRandType, TRand]) ThreadBuild(
 			}
 		}
 
-		if idx._verbose {
-			fmt.Printf("pass %d...\n", len(threadRoots))
-		}
-
-		var indices []TIdx
+		var indices []int
 		threadedBuildPolicy.LockSharedNodes()
-		for i := TIdx(0); i < idx._n_items; i++ {
+		for i := 0; i < idx._n_items; i++ {
 			node := idx._nodes[i]
+
 			if node.GetNumberOfDescendants() >= 1 {
 				indices = append(indices, i)
 			}
@@ -149,17 +150,17 @@ func (idx *AnnoyIndexImpl[TIdx, TV, TRandType, TRand]) ThreadBuild(
 	threadedBuildPolicy.UnlockRoots()
 }
 
-func (idx *AnnoyIndexImpl[TIdx, TV, TRandType, TRand]) makeTree(
-	indices []TIdx, isRoot bool,
+func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) makeTree(
+	indices []int, isRoot bool,
 	rnd random.Random[TRandType],
 	threadedBuildPolicy interfaces.AnnoyIndexBuildPolicy,
-) TIdx {
+) int {
 
 	if len(indices) == 1 && !isRoot {
 		return indices[0]
 	}
 
-	if TIdx(len(indices)) <= idx._K && (!isRoot || idx._n_items <= idx._K || len(indices) == 1) {
+	if len(indices) <= idx.maxDescendants && (!isRoot || idx._n_items <= idx.maxDescendants || len(indices) == 1) {
 		threadedBuildPolicy.LockNNodes()
 		item := idx._n_nodes
 		idx._n_nodes++
@@ -174,7 +175,7 @@ func (idx *AnnoyIndexImpl[TIdx, TV, TRandType, TRand]) makeTree(
 		}
 
 		if len(indices) > 0 {
-			children := [2]int32{}
+			children := []int32{}
 			for i, index := range indices {
 				children[i] = int32(index)
 			}
@@ -190,14 +191,13 @@ func (idx *AnnoyIndexImpl[TIdx, TV, TRandType, TRand]) makeTree(
 	return -1
 }
 
-func (idx *AnnoyIndexImpl[S, TV, TRandType, TRand]) reinitialize() {
-	idx._fd = 0
-	idx._nodes = []distance.Node[TV]{}
+func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) reinitialize() {
+	idx._nodes = nil
 	idx.indexLoaded = false
 	idx._n_items = 0
 	idx._n_nodes = 0
 	idx._nodes_size = 0
 	idx._on_disk = false
-	idx._seed = idx._seed.CloneAndReset()
-	idx._roots = []S{}
+	idx.random = idx.random.CloneAndReset()
+	idx._roots = nil
 }
