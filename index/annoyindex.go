@@ -74,14 +74,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) GetItemVector(itemIndex int) []TV {
 		panic("Can't get items from an unloaded index")
 	}
 
-	// Map the node onto the memory
-	node := idx.distance.MapNodeToMemory(
-		idx._nodes,
-		itemIndex,
-		idx.vectorLength,
-	)
-
-	return node.GetVector(idx.vectorLength)
+	return idx.getNode(itemIndex).GetVector(idx.vectorLength)
 }
 
 // AddItem adds an item to the index. The ownership of the vector _v_ is taken
@@ -97,11 +90,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) AddItem(itemIndex int, v []TV) {
 	idx.allocateSize(itemIndex+1, nil)
 
 	// Map the node onto the memory
-	node := idx.distance.MapNodeToMemory(
-		idx._nodes,
-		itemIndex,
-		idx.vectorLength,
-	)
+	node := idx.getNode(itemIndex)
 
 	// Initialize the node with the vector
 	node.SetNumberOfDescendants(1)
@@ -139,8 +128,8 @@ func (idx *AnnoyIndexImpl[TV, TR]) Build(treesPerThread int) {
 	idx.allocateSize(idx._n_nodes+len(idx._roots), nil)
 
 	for i := 0; i < len(idx._roots); i++ {
-		dst := idx.distance.MapNodeToMemory(idx._nodes, idx._n_nodes+i, idx.vectorLength)
-		src := idx.distance.MapNodeToMemory(idx._nodes, i, idx.vectorLength)
+		dst := idx.getNode(idx._n_nodes + i)
+		src := idx.getNode(i)
 
 		src.CopyNodeTo(
 			dst,
@@ -183,7 +172,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) ThreadBuild(
 		threadedBuildPolicy.LockSharedNodes()
 
 		for i := 0; i < idx._n_items; i++ {
-			node := idx.distance.MapNodeToMemory(idx._nodes, i, idx.vectorLength)
+			node := idx.getNode(i)
 
 			if node.GetNumberOfDescendants() >= 1 {
 				indices = append(indices, i)
@@ -263,7 +252,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) Load(fileName string) {
 
 	for i := idx._n_nodes - 1; i >= 0; i++ {
 
-		n := idx.distance.MapNodeToMemory(idx._nodes, i, idx.vectorLength)
+		n := idx.getNode(i)
 		k := n.GetNumberOfDescendants()
 
 		if m == -1 || k == m {
@@ -276,8 +265,8 @@ func (idx *AnnoyIndexImpl[TV, TR]) Load(fileName string) {
 
 	// hacky fix: since the last root precedes the copy of all roots, delete it
 	if len(idx._roots) > 1 {
-		fn := idx.distance.MapNodeToMemory(idx._nodes, idx._roots[0], idx.vectorLength)
-		ln := idx.distance.MapNodeToMemory(idx._nodes, idx._roots[len(idx._roots)-1], idx.vectorLength)
+		fn := idx.getNode(idx._roots[0])
+		ln := idx.getNode(idx._roots[len(idx._roots)-1])
 
 		if fn.GetChildren()[0] == ln.GetChildren()[0] {
 			idx._roots = idx._roots[:len(idx._roots)-1]
@@ -294,6 +283,10 @@ func (idx *AnnoyIndexImpl[TV, TR]) unload() {
 	idx.reinitialize()
 }
 
+func (idx *AnnoyIndexImpl[TV, TR]) getNode(index int) interfaces.Node[TV] {
+	return idx.distance.MapNodeToMemory(idx._nodes, index, idx.vectorLength)
+}
+
 func (idx *AnnoyIndexImpl[TV, TR]) makeTree(
 	indices []int, isRoot bool,
 	rnd interfaces.Random[TR],
@@ -307,16 +300,16 @@ func (idx *AnnoyIndexImpl[TV, TR]) makeTree(
 	if len(indices) <= idx.maxDescendants &&
 		(!isRoot || idx._n_items <= idx.maxDescendants || len(indices) == 1) {
 		// Ensure we have memory for the new node
+		threadedBuildPolicy.LockNNodes()
 		idx.allocateSize(idx._n_nodes+1, threadedBuildPolicy)
 
-		threadedBuildPolicy.LockNNodes()
 		item := idx._n_nodes
 		idx._n_nodes++
 		threadedBuildPolicy.UnlockNNodes()
 
 		threadedBuildPolicy.LockSharedNodes()
 
-		m := idx.distance.MapNodeToMemory(idx._nodes, item, idx.vectorLength)
+		m := idx.getNode(item)
 
 		if isRoot {
 			m.SetNumberOfDescendants(idx._n_items)
@@ -342,7 +335,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) makeTree(
 
 	for _, j := range indices {
 		// TODO: original code did a check: Node* n = _get(j); if (n) {...}
-		n := idx.distance.MapNodeToMemory(idx._nodes, j, idx.vectorLength)
+		n := idx.getNode(j)
 		children = append(children, n)
 	}
 
@@ -362,7 +355,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) makeTree(
 
 		for _, j := range indices {
 			// TODO: original code did a check: Node* n = _get(j); if (n) {...}
-			n := idx.distance.MapNodeToMemory(idx._nodes, j, idx.vectorLength)
+			n := idx.getNode(j)
 
 			side := idx.distance.Side(
 				m,
@@ -436,7 +429,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) makeTree(
 	idx.buildPolicy.UnlockNNodes()
 
 	idx.buildPolicy.LockSharedNodes()
-	dst := idx.distance.MapNodeToMemory(idx._nodes, item, idx.vectorLength)
+	dst := idx.getNode(item)
 
 	m.CopyNodeTo(dst, idx.vectorLength)
 	idx.buildPolicy.UnlockSharedNodes()
