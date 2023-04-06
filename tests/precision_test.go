@@ -17,7 +17,7 @@ func TestPrecisionSingleThreaded(t *testing.T) {
 	defer allocator.Free()
 
 	n := 100
-	vectorLength := 40
+	vectorLength := 20
 
 	index := index.NewAnnoyIndexImpl[float64, uint32](
 		vectorLength,

@@ -60,7 +60,7 @@ func (n *AngularNodeImpl[TV]) SetVector(v []TV) {
 	src := unsafe.Pointer(&v[0])
 	size := uintptr(len(v)) * unsafe.Sizeof(TV(0))
 
-	copy((*[1 << 30]byte)(dst)[:size], (*[1 << 30]byte)(src)[:size])
+	copy((*[1 << 31]byte)(dst)[:size], (*[1 << 31]byte)(src)[:size])
 }
 
 func (n *AngularNodeImpl[TV]) GetRawChildren() *int {
@@ -80,7 +80,7 @@ func (n *AngularNodeImpl[TV]) SetChildren(children []int) {
 	src := unsafe.Pointer(&children[0])
 	size := uintptr(len(children)) * unsafe.Sizeof(int(0))
 
-	copy((*[1 << 30]byte)(dst)[:size], (*[1 << 30]byte)(src)[:size])
+	copy((*[1 << 31]byte)(dst)[:size], (*[1 << 31]byte)(src)[:size])
 }
 
 func (n *AngularNodeImpl[TV]) GetNumberOfDescendants() int {
@@ -129,7 +129,7 @@ func (n *AngularNodeImpl[TV]) CopyNodeTo(dst interfaces.Node[TV], vectorLength i
 	size := n.Size(vectorLength)
 
 	// Copy data from the input slice to the underlying memory
-	copy((*[1 << 30]byte)(dstPtr)[:size], (*[1 << 30]byte)(srcPtr)[:size])
+	copy((*[1 << 31]byte)(dstPtr)[:size], (*[1 << 31]byte)(srcPtr)[:size])
 }
 
 func (x *AngularNodeImpl[TV]) MaxNumChildren(vectorLength int) int {

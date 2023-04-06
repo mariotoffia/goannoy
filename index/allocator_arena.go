@@ -34,7 +34,7 @@ func (a *ArenaAllocatorImpl) Reallocate(byteSize int) unsafe.Pointer {
 
 	if a.ptrSize > 0 {
 		// Copy the memory from old arena to new arena
-		copy((*[1 << 30]byte)(ptr)[:a.ptrSize], (*[1 << 30]byte)(a.ptr)[:a.ptrSize])
+		copy((*[1 << 31]byte)(ptr)[:a.ptrSize], (*[1 << 31]byte)(a.ptr)[:a.ptrSize])
 	}
 
 	if a.currentArena != nil {
