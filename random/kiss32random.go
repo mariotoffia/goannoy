@@ -13,27 +13,28 @@ import "github.com/mariotoffia/goannoy/interfaces"
 // http://www0.cs.ucl.ac.uk/staff/d.jones/GoodPracticeRNG.pdf -> "Use a good RNG and build it into your code"
 // http://mathforum.org/kb/message.jspa?messageID=6627731
 // https://de.wikipedia.org/wiki/KISS_(Zufallszahlengenerator)
-type Kiss32Random struct {
-	x, y, z, c uint32
+type Kiss32Random[T interfaces.RandomTypes] struct {
+	x, y, z, c, seed T
 }
 
 // NewKiss32Random creates a new random number generator based on the KISS
 // algorithm.
-func NewKiss32Random(seed uint32) *Kiss32Random {
+func NewKiss32Random[T interfaces.RandomTypes](seed T) *Kiss32Random[T] {
 	if seed == 0 {
 		seed = 123456789
 	}
 
-	return &Kiss32Random{
-		x: seed,
-		y: 362436000,
-		z: 521288629,
-		c: 7654321,
+	return &Kiss32Random[T]{
+		x:    seed,
+		y:    362436000,
+		z:    521288629,
+		c:    7654321,
+		seed: seed,
 	}
 }
 
 // Next returns the next random number.
-func (r *Kiss32Random) Next() uint32 {
+func (r *Kiss32Random[T]) Next() T {
 	r.x = 69069*r.x + 12345
 	r.y ^= r.y << 13
 	r.y ^= r.y >> 17
@@ -41,27 +42,36 @@ func (r *Kiss32Random) Next() uint32 {
 
 	t := uint64(698769069) + uint64(r.z) + uint64(r.c)
 
-	r.c = uint32(t >> 32)
-	r.z = uint32(t)
+	r.c = T(t >> 32)
+	r.z = T(t)
 
-	return r.x + r.y + r.z
+	return T(r.x + r.y + r.z)
 }
 
-func (r *Kiss32Random) NextBool() bool {
+func (r *Kiss32Random[T]) NextBool() bool {
 	return r.Next()&1 == 1
 }
 
-func (r *Kiss32Random) NextSide() interfaces.Side {
+func (r *Kiss32Random[T]) NextSide() interfaces.Side {
 	if r.NextBool() {
 		return interfaces.SideLeft
 	}
 	return interfaces.SideRight
 }
 
-func (r *Kiss32Random) NextIndex(n uint32) uint32 {
+func (r *Kiss32Random[T]) NextIndex(n T) T {
 	return r.Next() % n
 }
 
-func (r *Kiss32Random) SetSeed(seed uint32) {
+func (r *Kiss32Random[T]) SetSeed(seed T) {
 	r.x = seed
+	r.seed = seed
+}
+
+func (r *Kiss32Random[T]) GetSeed() T {
+	return T(r.seed)
+}
+
+func (r *Kiss32Random[T]) CloneAndReset() interfaces.Random[T] {
+	return NewKiss32Random(r.seed)
 }

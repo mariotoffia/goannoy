@@ -11,20 +11,29 @@ import (
 
 type AngularDistanceImpl[TV interfaces.VectorType, TR interfaces.RandomTypes] struct{}
 
-func (a *AngularDistanceImpl[TV, TR]) MapNodeToMemory(mem unsafe.Pointer, itemIndex, vectorLength int) *AngularNodeImpl[TV] {
-	return (*AngularNodeImpl[TV])(
-		unsafe.Add(
-			mem,
-			itemIndex*(*AngularNodeImpl[TV])(nil).Size(vectorLength),
-		))
+func NewDistance[TV interfaces.VectorType, TR interfaces.RandomTypes](
+	vectorType TV,
+	randomType TR,
+) *AngularDistanceImpl[TV, TR] {
+	return &AngularDistanceImpl[TV, TR]{}
 }
 
-func (a *AngularDistanceImpl[TV, TR]) NewNodeFromGC(vectorLength int) *AngularNodeImpl[TV] {
+func (a *AngularDistanceImpl[TV, TR]) MapNodeToMemory(
+	mem unsafe.Pointer,
+	itemIndex, vectorLength int,
+) interfaces.Node[TV] {
+	size := (*AngularNodeImpl[TV])(nil).Size(vectorLength)
+	pos := unsafe.Add(mem, itemIndex*size)
+
+	return (*AngularNodeImpl[TV])(pos)
+}
+
+func (a *AngularDistanceImpl[TV, TR]) NewNodeFromGC(vectorLength int) interfaces.Node[TV] {
 	return &AngularNodeImpl[TV]{}
 }
 
 // PreProcess implements the `interfaces.DistancePreprocessor` interface.
-func (a *AngularDistanceImpl[TV, TR]) PreProcess(nodes []interfaces.Node[TV], vectorLength int) {
+func (a *AngularDistanceImpl[TV, TR]) PreProcess(nodes unsafe.Pointer, node_count, vectorLength int) {
 	// DO NOTHING
 }
 
@@ -38,13 +47,13 @@ func (a *AngularDistanceImpl[TV, TR]) Margin(n *AngularNodeImpl[TV], y []TV, vec
 
 // Side determines which side of the children indices to use when a split is made.
 func (a *AngularDistanceImpl[TV, TR]) Side(
-	m *AngularNodeImpl[TV],
+	m interfaces.Node[TV],
 	v []TV,
 	random interfaces.Random[TR],
 	vectorLength int,
 ) interfaces.Side {
 
-	dotProduct := a.Margin(m, v, vectorLength)
+	dotProduct := a.Margin(m.(*AngularNodeImpl[TV]), v, vectorLength)
 
 	if dotProduct != 0 {
 		if dotProduct > 0 {
@@ -61,7 +70,7 @@ func (a *AngularDistanceImpl[TV, TR]) CreateSplit(
 	children []interfaces.Node[TV],
 	vectorLength, nodeSize int,
 	random interfaces.Random[TR],
-	m *AngularNodeImpl[TV],
+	m interfaces.Node[TV],
 ) {
 
 	p_mem := make([]byte, nodeSize)
@@ -72,8 +81,10 @@ func (a *AngularDistanceImpl[TV, TR]) CreateSplit(
 
 	distance.TwoMeans[TV](children, vectorLength, random, true, p, q)
 
+	mv := m.GetVector(vectorLength)
+
 	for z := 0; z < vectorLength; z++ {
-		m.v[z] = p.v[z] - q.v[z]
+		mv[z] = p.v[z] - q.v[z]
 	}
 
 	m.Normalize(vectorLength)

@@ -19,40 +19,37 @@ import (
 
 type AnnoyIndexImpl[
 	TV interfaces.VectorType,
-	TRandType interfaces.RandomTypes,
-	TRand interfaces.Random[TRandType]] struct {
+	TR interfaces.RandomTypes] struct {
 	vectorLength int
 	nodeSize     int
 	// _n_items is how many nodes exists in the index.
 	_n_items       int
-	_nodes         []interfaces.Node[TV]
+	_nodes         unsafe.Pointer
 	_n_nodes       int
 	_nodes_size    int
 	_roots         []int
 	maxDescendants int
-	random         interfaces.Random[TRandType]
+	random         interfaces.Random[TR]
 	indexLoaded    bool
-	_on_disk       bool
 	indexBuilt     bool
-	distance       interfaces.Distance[TV, TRandType]
+	distance       interfaces.Distance[TV, TR]
 	buildPolicy    interfaces.AnnoyIndexBuildPolicy
 	allocator      Allocator
 }
 
 func NewAnnoyIndexImpl[
 	TV interfaces.VectorType,
-	TRandType interfaces.RandomTypes,
-	TRand interfaces.Random[TRandType]](
+	TR interfaces.RandomTypes](
 	vectorLength int,
-	random interfaces.Random[TRandType],
-	distance interfaces.Distance[TV, TRandType],
+	random interfaces.Random[TR],
+	distance interfaces.Distance[TV, TR],
 	buildPolicy interfaces.AnnoyIndexBuildPolicy,
 	allocator Allocator,
-) *AnnoyIndexImpl[TV, TRandType, TRand] {
+) *AnnoyIndexImpl[TV, TR] {
 	// Create a single node to query it for sizes
 	node := distance.NewNodeFromGC(vectorLength)
 
-	index := &AnnoyIndexImpl[TV, TRandType, TRand]{
+	index := &AnnoyIndexImpl[TV, TR]{
 		vectorLength:   vectorLength,                      // _f
 		random:         random,                            // _seed
 		nodeSize:       node.Size(vectorLength),           // _s
@@ -60,13 +57,14 @@ func NewAnnoyIndexImpl[
 		indexBuilt:     false,                             // _built
 		distance:       distance,
 		allocator:      allocator,
+		buildPolicy:    buildPolicy,
 	}
 
 	return index
 }
 
 // VectorLength returns the vector length of the index.
-func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) VectorLength() int {
+func (idx *AnnoyIndexImpl[TV, TR]) VectorLength() int {
 	return idx.vectorLength
 }
 
@@ -74,7 +72,7 @@ func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) VectorLength() int {
 // by this function. The _itemIndex_ is a numbering index of the _v_ vector and
 // *SHOULD* be incremental. If same _itemIndex_ is added twice, the last one
 // will be the one in the index.
-func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) AddItem(itemIndex int, v []TV) {
+func (idx *AnnoyIndexImpl[TV, TR]) AddItem(itemIndex int, v []TV) {
 	if idx.indexLoaded {
 		panic("Can't add items to a loaded index")
 	}
@@ -84,7 +82,7 @@ func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) AddItem(itemIndex int, v []TV) 
 
 	// Map the node onto the memory
 	node := idx.distance.MapNodeToMemory(
-		unsafe.Pointer(&idx._nodes[0]),
+		unsafe.Pointer(idx._nodes),
 		itemIndex,
 		idx.vectorLength,
 	)
@@ -100,7 +98,7 @@ func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) AddItem(itemIndex int, v []TV) 
 	}
 }
 
-func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) Build(treesPerThread int) {
+func (idx *AnnoyIndexImpl[TV, TR]) Build(treesPerThread int) {
 	if idx.indexLoaded {
 		panic("Can't build a loaded index")
 	}
@@ -125,8 +123,11 @@ func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) Build(treesPerThread int) {
 	idx.allocateSize(idx._n_nodes+len(idx._roots), nil)
 
 	for i := 0; i < len(idx._roots); i++ {
-		idx._nodes[i].CopyNodeTo(
-			idx._nodes[idx._n_nodes+i],
+		dst := idx.distance.MapNodeToMemory(idx._nodes, idx._n_nodes+i, idx.vectorLength)
+		src := idx.distance.MapNodeToMemory(idx._nodes, i, idx.vectorLength)
+
+		src.CopyNodeTo(
+			dst,
 			idx.vectorLength,
 		)
 	}
@@ -136,14 +137,14 @@ func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) Build(treesPerThread int) {
 }
 
 // ThreadBuild is called from the build policy to build the index.
-func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) ThreadBuild(
+func (idx *AnnoyIndexImpl[TV, TR]) ThreadBuild(
 	treesPerThread, threadIdx int,
 	threadedBuildPolicy interfaces.AnnoyIndexBuildPolicy,
 ) {
 	rnd := idx.random.CloneAndReset()
 
 	// Each thread needs its own seed, otherwise each thread would be building the same tree(s)
-	rnd.SetSeed(rnd.GetSeed() + TRandType(threadIdx))
+	rnd.SetSeed(rnd.GetSeed() + TR(threadIdx))
 
 	var threadRoots []int
 
@@ -166,7 +167,7 @@ func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) ThreadBuild(
 		threadedBuildPolicy.LockSharedNodes()
 
 		for i := 0; i < idx._n_items; i++ {
-			node := idx._nodes[i]
+			node := idx.distance.MapNodeToMemory(idx._nodes, i, idx.vectorLength)
 
 			if node.GetNumberOfDescendants() >= 1 {
 				indices = append(indices, i)
@@ -186,9 +187,9 @@ func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) ThreadBuild(
 	threadedBuildPolicy.UnlockRoots()
 }
 
-func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) makeTree(
+func (idx *AnnoyIndexImpl[TV, TR]) makeTree(
 	indices []int, isRoot bool,
-	rnd interfaces.Random[TRandType],
+	rnd interfaces.Random[TR],
 	threadedBuildPolicy interfaces.AnnoyIndexBuildPolicy,
 ) int {
 
@@ -208,7 +209,7 @@ func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) makeTree(
 
 		threadedBuildPolicy.LockSharedNodes()
 
-		m := idx._nodes[item]
+		m := idx.distance.MapNodeToMemory(idx._nodes, item, idx.vectorLength)
 
 		if isRoot {
 			m.SetNumberOfDescendants(idx._n_items)
@@ -234,7 +235,8 @@ func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) makeTree(
 
 	for _, j := range indices {
 		// TODO: original code did a check: Node* n = _get(j); if (n) {...}
-		children = append(children, idx._nodes[j])
+		n := idx.distance.MapNodeToMemory(idx._nodes, j, idx.vectorLength)
+		children = append(children, n)
 	}
 
 	children_indices := [2][]int{}
@@ -253,9 +255,11 @@ func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) makeTree(
 
 		for _, j := range indices {
 			// TODO: original code did a check: Node* n = _get(j); if (n) {...}
+			n := idx.distance.MapNodeToMemory(idx._nodes, j, idx.vectorLength)
+
 			side := idx.distance.Side(
 				m,
-				idx._nodes[j].GetVector(idx.vectorLength),
+				n.GetVector(idx.vectorLength),
 				idx.random,
 				idx.vectorLength,
 			)
@@ -325,13 +329,15 @@ func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) makeTree(
 	idx.buildPolicy.UnlockNNodes()
 
 	idx.buildPolicy.LockSharedNodes()
-	m.CopyNodeTo(idx._nodes[item], idx.vectorLength)
+	dst := idx.distance.MapNodeToMemory(idx._nodes, item, idx.vectorLength)
+
+	m.CopyNodeTo(dst, idx.vectorLength)
 	idx.buildPolicy.UnlockSharedNodes()
 
 	return item
 }
 
-func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) splitImbalance(
+func (idx *AnnoyIndexImpl[TV, TR]) splitImbalance(
 	left_indices, right_indices []int) float64 {
 	ls := float64(len(left_indices))
 	rs := float64(len(right_indices))
@@ -340,7 +346,7 @@ func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) splitImbalance(
 	return utils.MaxFloat64(f, 1-f)
 }
 
-func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) allocateSize(
+func (idx *AnnoyIndexImpl[TV, TR]) allocateSize(
 	size int,
 	threadedBuildPolicy interfaces.AnnoyIndexBuildPolicy,
 ) {
@@ -353,9 +359,7 @@ func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) allocateSize(
 		}
 
 		new_node_size := utils.Max(size, int(float64(idx._nodes_size+1)*reallocation_factor))
-		new_mem := idx.allocator.Reallocate(new_node_size * idx.nodeSize)
-
-		idx._nodes = unsafe.Slice((*interfaces.Node[TV])(unsafe.Pointer(new_mem)), new_node_size)
+		idx._nodes = idx.allocator.Reallocate(new_node_size * idx.nodeSize)
 		idx._nodes_size = new_node_size
 
 		if threadedBuildPolicy != nil {
@@ -365,13 +369,12 @@ func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) allocateSize(
 }
 
 /*
-func (idx *AnnoyIndexImpl[TV, TRandType, TRand]) reinitialize() {
+func (idx *AnnoyIndexImpl[TV, TR]) reinitialize() {
 	idx._nodes = nil
 	idx.indexLoaded = false
 	idx._n_items = 0
 	idx._n_nodes = 0
 	idx._nodes_size = 0
-	idx._on_disk = false
 	idx.random = idx.random.CloneAndReset()
 	idx._roots = nil
 }

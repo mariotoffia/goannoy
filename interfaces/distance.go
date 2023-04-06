@@ -17,7 +17,9 @@ type VectorType interface {
 
 type Distance[TV VectorType, TR RandomTypes] interface {
 	// PreProcess will pre-process the data before it is used for distance calculations.
-	PreProcess(nodes []Node[TV], node_count int, vectorLength int)
+	//
+	// The _nodes_ is a pointer to the beginning of the memory where the nodes are stored.
+	PreProcess(nodes unsafe.Pointer, node_count, vectorLength int)
 	// NormalizeDistance will normalize the distance to a value between 0 and 1.
 	NormalizedDistance(distance TV) TV
 	// CreateSplit will write to split node _m_ based on the _children_ nodes. The _nodeSize_ is the

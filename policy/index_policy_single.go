@@ -6,7 +6,7 @@ type AnnoyIndexSingleThreadedBuildPolicy struct{}
 
 func (p *AnnoyIndexSingleThreadedBuildPolicy) Build(
 	builder interfaces.AnnoyIndexBuilder,
-	treesPerThread int, nThreads int,
+	treesPerThread, nThreads int,
 ) {
 	builder.ThreadBuild(treesPerThread, 0, p)
 }

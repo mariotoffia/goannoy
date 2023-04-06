@@ -17,7 +17,7 @@ type AnnoyIndexMultiThreadedBuildPolicy struct {
 
 func (p *AnnoyIndexMultiThreadedBuildPolicy) Build(
 	builder interfaces.AnnoyIndexBuilder,
-	treesPerThread int, nThreads int,
+	treesPerThread, nThreads int,
 ) {
 	if nThreads == -1 {
 		nThreads = utils.Max(1, runtime.NumCPU())

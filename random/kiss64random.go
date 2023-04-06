@@ -14,7 +14,7 @@ import "github.com/mariotoffia/goannoy/interfaces"
 // http://mathforum.org/kb/message.jspa?messageID=6627731
 // https://de.wikipedia.org/wiki/KISS_(Zufallszahlengenerator)
 type Kiss64Random struct {
-	x, y, z, c uint64
+	x, y, z, c, seed uint64
 }
 
 func NewKiss64Random(seed uint64) *Kiss64Random {
@@ -23,10 +23,11 @@ func NewKiss64Random(seed uint64) *Kiss64Random {
 	}
 
 	return &Kiss64Random{
-		x: seed,
-		y: 362436362436362436,
-		z: 1066149217761810,
-		c: 123456123456123456,
+		x:    seed,
+		y:    362436362436362436,
+		z:    1066149217761810,
+		c:    123456123456123456,
+		seed: seed,
 	}
 }
 
@@ -65,4 +66,13 @@ func (r *Kiss64Random) NextIndex(n uint64) uint64 {
 
 func (r *Kiss64Random) SetSeed(seed uint64) {
 	r.x = seed
+	r.seed = seed
+}
+
+func (r *Kiss64Random) GetSeed() uint64 {
+	return r.seed
+}
+
+func (r *Kiss64Random) CloneAndReset() *Kiss64Random {
+	return NewKiss64Random(r.seed)
 }
