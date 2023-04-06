@@ -69,6 +69,21 @@ func (idx *AnnoyIndexImpl[TV, TR]) VectorLength() int {
 	return idx.vectorLength
 }
 
+func (idx *AnnoyIndexImpl[TV, TR]) GetItemVector(itemIndex int) []TV {
+	if !idx.indexLoaded {
+		panic("Can't get items from an unloaded index")
+	}
+
+	// Map the node onto the memory
+	node := idx.distance.MapNodeToMemory(
+		unsafe.Pointer(idx._nodes),
+		itemIndex,
+		idx.vectorLength,
+	)
+
+	return node.GetVector(idx.vectorLength)
+}
+
 // AddItem adds an item to the index. The ownership of the vector _v_ is taken
 // by this function. The _itemIndex_ is a numbering index of the _v_ vector and
 // *SHOULD* be incremental. If same _itemIndex_ is added twice, the last one

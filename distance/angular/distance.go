@@ -82,9 +82,11 @@ func (a *AngularDistanceImpl[TV, TR]) CreateSplit(
 	distance.TwoMeans[TV](children, vectorLength, random, true, p, q)
 
 	mv := m.GetVector(vectorLength)
+	qv := q.GetVector(vectorLength)
+	pv := p.GetVector(vectorLength)
 
 	for z := 0; z < vectorLength; z++ {
-		mv[z] = p.v[z] - q.v[z]
+		mv[z] = pv[z] - qv[z]
 	}
 
 	m.Normalize(vectorLength)

@@ -5,19 +5,6 @@ var EmptyChildren = []int{}
 type Node[TV VectorType] interface {
 	// GetRawVector returns the raw vector that you have to know the length in order
 	// to safely access it.
-	//
-	// ```go
-	// func ShowVector[TV VectorType](node *NodeImpl[TV]) {
-	// vectorLength := 1536
-	// ptr := unsafe.Pointer(node.GetFirstFloat32Ptr())
-	// size := unsafe.Sizeof(TV(0))
-	//
-	//	for i := uintptr(0); i < uintptr(vectorLength); i++ {
-	//	 f := *(*TV)(unsafe.Pointer(ptr + i*size))
-	//	 fmt.Printf("n.v[%d] = %.2f\n", i, f)
-	//	}
-	//
-	// ```
 	GetRawVector() *TV
 	// GetVector will allocate a slice header and point to the raw vector.
 	//

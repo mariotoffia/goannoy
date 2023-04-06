@@ -17,7 +17,7 @@ func TestPrecisionSingleThreaded(t *testing.T) {
 	defer allocator.Free()
 
 	n := 100
-	vectorLength := 1536
+	vectorLength := 40
 
 	index := index.NewAnnoyIndexImpl[float64, uint32](
 		vectorLength,
@@ -38,8 +38,11 @@ func TestPrecisionSingleThreaded(t *testing.T) {
 		return vec
 	}
 
+	vectors := make([][]float64, n)
 	for i := 0; i < n; i++ {
-		index.AddItem(i, createVector())
+		v := createVector()
+		vectors[i] = v
+		index.AddItem(i, v)
 	}
 
 	fmt.Println("Building index num_trees = 2 * num_features ...")
@@ -49,4 +52,19 @@ func TestPrecisionSingleThreaded(t *testing.T) {
 	fmt.Println("Saving index ...")
 	index.Save("test.ann")
 	fmt.Println("Done")
+
+	for i := 0; i < n; i++ {
+		v := vectors[i]
+		iv := index.GetItemVector(i)
+
+		// Compare vectors
+		for j := 0; j < vectorLength; j++ {
+			if v[j] != iv[j] {
+				t.Errorf("Vector mismatch at index %d, %f != %f", j, v[j], iv[j])
+			}
+		}
+
+		fmt.Println("Vector: ", v)
+		fmt.Println("ItemVector: ", iv)
+	}
 }
