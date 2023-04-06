@@ -1,4 +1,4 @@
-package angular
+package tests
 
 import (
 	"testing"
