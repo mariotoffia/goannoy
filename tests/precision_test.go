@@ -45,4 +45,8 @@ func TestPrecisionSingleThreaded(t *testing.T) {
 	fmt.Println("Building index num_trees = 2 * num_features ...")
 	index.Build(2 * vectorLength)
 	fmt.Println("Done building index")
+
+	fmt.Println("Saving index ...")
+	index.Save("test.ann")
+	fmt.Println("Done")
 }

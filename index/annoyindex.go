@@ -1,6 +1,7 @@
 package index
 
 import (
+	"os"
 	"unsafe"
 
 	"github.com/mariotoffia/goannoy/interfaces"
@@ -187,6 +188,97 @@ func (idx *AnnoyIndexImpl[TV, TR]) ThreadBuild(
 	threadedBuildPolicy.UnlockRoots()
 }
 
+func (idx *AnnoyIndexImpl[TV, TR]) Save(fileName string) {
+	if !idx.indexBuilt {
+		panic("Can't save an index that hasn't been built")
+	}
+
+	file, err := os.Create(fileName)
+	if err != nil {
+		panic(err)
+	}
+
+	defer file.Close()
+
+	data := unsafe.Slice((*byte)(idx._nodes), idx._nodes_size*idx.nodeSize)
+
+	_, err = file.Write(data)
+
+	if err != nil {
+		panic(err)
+	}
+
+	idx.unload()
+	idx.Load(fileName)
+}
+
+func (idx *AnnoyIndexImpl[TV, TR]) Load(fileName string) {
+	file, err := os.Open(fileName)
+	if err != nil {
+		panic(err)
+	}
+
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		panic(err)
+	}
+
+	fileSize := fileInfo.Size()
+
+	if fileSize%int64(idx.nodeSize) != 0 {
+		panic("File size is not a multiple of node size")
+	}
+
+	idx.allocateSize(int(fileSize)/idx.nodeSize, nil)
+
+	idx._roots = nil
+	idx._n_nodes = int(fileSize) / idx.nodeSize
+
+	data := unsafe.Slice((*byte)(idx._nodes), idx._nodes_size*idx.nodeSize)
+
+	_, err = file.Read(data)
+
+	if err != nil {
+		panic(err)
+	}
+
+	m := -1
+
+	for i := idx._n_nodes - 1; i >= 0; i++ {
+
+		n := idx.distance.MapNodeToMemory(idx._nodes, i, idx.vectorLength)
+		k := n.GetNumberOfDescendants()
+
+		if m == -1 || k == m {
+			idx._roots = append(idx._roots, i)
+			m = k
+		} else {
+			break
+		}
+	}
+
+	// hacky fix: since the last root precedes the copy of all roots, delete it
+	if len(idx._roots) > 1 {
+		fn := idx.distance.MapNodeToMemory(idx._nodes, idx._roots[0], idx.vectorLength)
+		ln := idx.distance.MapNodeToMemory(idx._nodes, idx._roots[len(idx._roots)-1], idx.vectorLength)
+
+		if fn.GetChildren()[0] == ln.GetChildren()[0] {
+			idx._roots = idx._roots[:len(idx._roots)-1]
+		}
+	}
+
+	idx.indexBuilt = true
+	idx.indexLoaded = true
+	idx._n_items = m
+}
+
+func (idx *AnnoyIndexImpl[TV, TR]) unload() {
+	idx.allocator.Free()
+	idx.reinitialize()
+}
+
 func (idx *AnnoyIndexImpl[TV, TR]) makeTree(
 	indices []int, isRoot bool,
 	rnd interfaces.Random[TR],
@@ -368,7 +460,6 @@ func (idx *AnnoyIndexImpl[TV, TR]) allocateSize(
 	}
 }
 
-/*
 func (idx *AnnoyIndexImpl[TV, TR]) reinitialize() {
 	idx._nodes = nil
 	idx.indexLoaded = false
@@ -378,4 +469,3 @@ func (idx *AnnoyIndexImpl[TV, TR]) reinitialize() {
 	idx.random = idx.random.CloneAndReset()
 	idx._roots = nil
 }
-*/
