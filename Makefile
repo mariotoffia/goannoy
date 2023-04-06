@@ -19,7 +19,7 @@ build_shell:
 
 test:
 	@echo "Running tests with timeout $(TEST_TIMEOUT) and generating coverage..."
-	@go test -timeout $(TEST_TIMEOUT) -coverprofile=$(COVERAGE_FILE) $(TEST_DIR)/... -v
+	@go test -timeout $(TEST_TIMEOUT) -coverprofile=$(COVERAGE_FILE) $(TEST_DIR)/... -v -coverpkg ./...
 	@go tool cover -func=$(COVERAGE_FILE)
 
 lint:
