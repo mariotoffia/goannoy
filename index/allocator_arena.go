@@ -23,6 +23,8 @@ func (a *ArenaAllocatorImpl) Free() {
 	}
 
 	a.currentArena = nil
+	a.ptr = nil
+	a.ptrSize = 0
 }
 
 func (a *ArenaAllocatorImpl) Reallocate(byteSize int) unsafe.Pointer {
@@ -30,7 +32,7 @@ func (a *ArenaAllocatorImpl) Reallocate(byteSize int) unsafe.Pointer {
 	ar := arena.NewArena()
 
 	data := arena.MakeSlice[byte](ar, byteSize, byteSize)
-	ptr := unsafe.Pointer(&data[0])
+	ptr := unsafe.Pointer(unsafe.SliceData(data))
 
 	if a.ptrSize > 0 {
 		// Copy the memory from old arena to new arena

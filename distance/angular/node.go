@@ -77,7 +77,7 @@ func (n *AngularNodeImpl[TV]) GetChildren() []int {
 
 func (n *AngularNodeImpl[TV]) SetChildren(children []int) {
 	dst := unsafe.Pointer(&n.children)
-	src := unsafe.Pointer(&children[0])
+	src := unsafe.Pointer(unsafe.SliceData(children))
 	size := uintptr(len(children)) * unsafe.Sizeof(int(0))
 
 	copy((*[1 << 31]byte)(dst)[:size], (*[1 << 31]byte)(src)[:size])
@@ -93,11 +93,6 @@ func (n *AngularNodeImpl[TV]) SetNumberOfDescendants(nDescendants int) {
 
 func (n *AngularNodeImpl[TV]) IsDataPoint() bool {
 	return n.n_descendants == 1
-}
-
-// HasIndexes returns true if the n.children is being used to store indexes.
-func (n *AngularNodeImpl[TV]) HasIndexes(vectorLength int) bool {
-	return n.n_descendants > 1 && n.n_descendants < n.MaxNumChildren(vectorLength)
 }
 
 func (n *AngularNodeImpl[TV]) Normalize(vectorLength int) {

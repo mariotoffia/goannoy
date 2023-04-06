@@ -22,7 +22,8 @@ type AnnoyIndexImpl[
 	TV interfaces.VectorType,
 	TR interfaces.RandomTypes] struct {
 	vectorLength int
-	nodeSize     int
+	// nodeSize the the complete size of the node in bytes.
+	nodeSize int
 	// _n_items is how many nodes exists in the index.
 	_n_items       int
 	_nodes         unsafe.Pointer
@@ -204,7 +205,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) Save(fileName string) {
 
 	defer file.Close()
 
-	data := unsafe.Slice((*byte)(idx._nodes), idx._nodes_size*idx.nodeSize)
+	data := unsafe.Slice((*byte)(idx._nodes), idx._n_nodes*idx.nodeSize)
 
 	_, err = file.Write(data)
 
@@ -340,7 +341,11 @@ func (idx *AnnoyIndexImpl[TV, TR]) makeTree(
 	}
 
 	children_indices := [2][]int{}
-	m := idx.distance.NewNodeFromGC(idx.vectorLength)
+	data := make([]byte, idx.nodeSize) // Need it since, gc won't remove it until scope end
+
+	m := idx.distance.MapNodeToMemory(
+		unsafe.Pointer(unsafe.SliceData(data)), 0, idx.vectorLength,
+	)
 
 	for attempt := 0; attempt < 3; attempt++ {
 		children_indices[0] = nil

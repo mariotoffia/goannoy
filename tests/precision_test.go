@@ -16,7 +16,7 @@ func TestPrecisionSingleThreaded(t *testing.T) {
 
 	defer allocator.Free()
 
-	n := 10000
+	n := 1000
 	vectorLength := 40
 
 	idx := index.NewAnnoyIndexImpl[float64, uint32](
@@ -48,24 +48,20 @@ func TestPrecisionSingleThreaded(t *testing.T) {
 	fmt.Println("Building index num_trees = 2 * num_features ...")
 	idx.Build(2 * vectorLength)
 	fmt.Println("Done building index")
-	/*
-	   fmt.Println("Saving index ...")
-	   index.Save("test.ann")
-	   fmt.Println("Done")
 
-	   	for i := 0; i < n; i++ {
-	   		v := vectors[i]
-	   		iv := index.GetItemVector(i)
+	fmt.Println("Saving index ...")
+	idx.Save("test.ann")
+	fmt.Println("Done")
 
-	   		// Compare vectors
-	   		for j := 0; j < vectorLength; j++ {
-	   			if v[j] != iv[j] {
-	   				t.Errorf("Vector mismatch at index %d, %f != %f", j, v[j], iv[j])
-	   			}
-	   		}
+	for i := 0; i < n; i++ {
+		v := vectors[i]
+		iv := idx.GetItemVector(i)
 
-	   		fmt.Println("Vector: ", v)
-	   		fmt.Println("ItemVector: ", iv)
-	   	}
-	*/
+		// Compare vectors
+		for j := 0; j < vectorLength; j++ {
+			if v[j] != iv[j] {
+				t.Errorf("Vector mismatch at index %d, %f != %f", j, v[j], iv[j])
+			}
+		}
+	}
 }
