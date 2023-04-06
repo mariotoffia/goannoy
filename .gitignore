@@ -5,6 +5,8 @@
 *.so
 *.dylib
 
+/bin
+
 # Test binary, built with `go test -c`
 *.test
 
@@ -16,3 +18,4 @@
 
 # Testfiles
 *.ann
+coverage.out

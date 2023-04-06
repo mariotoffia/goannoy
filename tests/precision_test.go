@@ -10,7 +10,7 @@ import (
 	"github.com/mariotoffia/goannoy/random"
 )
 
-func TestPrecisionSingleThreaded(t *testing.T) {
+func TestPrecision(t *testing.T) {
 	rnd := random.NewKiss32Random(uint32(0) /*default seed*/)
 	allocator := index.NewArenaAllocator()
 
@@ -23,7 +23,7 @@ func TestPrecisionSingleThreaded(t *testing.T) {
 		vectorLength,
 		rnd,
 		&angular.AngularDistanceImpl[float64, uint32]{},
-		&policy.AnnoyIndexSingleThreadedBuildPolicy{},
+		&policy.AnnoyIndexMultiThreadedBuildPolicy{},
 		allocator,
 	)
 
