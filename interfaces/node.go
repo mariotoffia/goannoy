@@ -1,11 +1,4 @@
-package distance
-
-type Direction int
-
-const (
-	Left  Direction = 0
-	Right Direction = 1
-)
+package interfaces
 
 var EmptyChildren = []int{}
 

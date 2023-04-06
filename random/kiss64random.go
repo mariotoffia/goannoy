@@ -1,5 +1,7 @@
 package random
 
+import "github.com/mariotoffia/goannoy/interfaces"
+
 // A random number generator based on the KISS algorithm.
 //
 // The KISS algorithm is a combination of four different random number
@@ -48,6 +50,13 @@ func (r *Kiss64Random) Next() uint64 {
 
 func (r *Kiss64Random) NextBool() bool {
 	return r.Next()&1 == 1
+}
+
+func (r *Kiss64Random) NextSide() interfaces.Side {
+	if r.NextBool() {
+		return interfaces.SideLeft
+	}
+	return interfaces.SideRight
 }
 
 func (r *Kiss64Random) NextIndex(n uint64) uint64 {

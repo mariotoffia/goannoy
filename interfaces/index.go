@@ -1,15 +1,10 @@
 package interfaces
 
-import (
-	"github.com/mariotoffia/goannoy/distance"
-	"github.com/mariotoffia/goannoy/random"
-)
-
 type AnnoyIndex[
 	TIdx int,
-	TV distance.VectorType,
-	TRandType random.RandomTypes,
-	TRand random.Random[TRandType]] interface {
+	TV VectorType,
+	TRandType RandomTypes,
+	TRand Random[TRandType]] interface {
 }
 
 type AnnoyIndexBuilder interface {

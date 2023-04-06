@@ -1,7 +1,7 @@
 package distance
 
 import (
-	"github.com/mariotoffia/goannoy/random"
+	"github.com/mariotoffia/goannoy/interfaces"
 	"github.com/mariotoffia/goannoy/vector"
 )
 
@@ -13,12 +13,12 @@ import (
 // can't motivate it well. The basic idea is to keep two centroids and assign
 // points to either one of them. We weight each centroid by the number of points
 // assigned to it, so to balance it.
-func TwoMeans[TV VectorType, TR random.RandomTypes](
-	nodes []Node[TV],
+func TwoMeans[TV interfaces.VectorType, TR interfaces.RandomTypes](
+	nodes []interfaces.Node[TV],
 	vectorLength int,
-	random random.Random[TR],
+	random interfaces.Random[TR],
 	cosine bool,
-	p, q Node[TV]) {
+	p, q interfaces.Node[TV]) {
 	//
 	const iterationSteps = 200
 

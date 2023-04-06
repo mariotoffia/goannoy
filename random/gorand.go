@@ -3,6 +3,8 @@ package random
 import (
 	"math/rand"
 	"time"
+
+	"github.com/mariotoffia/goannoy/interfaces"
 )
 
 type GoRandom struct {
@@ -28,6 +30,13 @@ func (r *GoRandom) Next() uint32 {
 
 func (r *GoRandom) NextBool() bool {
 	return r.rng.Intn(2) == 1
+}
+
+func (r *GoRandom) NextSide() interfaces.Side {
+	if r.NextBool() {
+		return interfaces.SideLeft
+	}
+	return interfaces.SideRight
 }
 
 func (r *GoRandom) NormFloat64() float64 {

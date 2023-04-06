@@ -1,4 +1,7 @@
 {
+  "go.toolsEnvVars": {
+    "GOEXPERIMENT": "arenas"
+  },
   "cSpell.words": [
     "amath",
     "ANNOYLIB",

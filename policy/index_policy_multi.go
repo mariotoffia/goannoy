@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/mariotoffia/goannoy/interfaces"
+	"github.com/mariotoffia/goannoy/utils"
 )
 
 type AnnoyIndexMultiThreadedBuildPolicy struct {
@@ -19,7 +20,7 @@ func (p *AnnoyIndexMultiThreadedBuildPolicy) Build(
 	treesPerThread int, nThreads int,
 ) {
 	if nThreads == -1 {
-		nThreads = max(1, runtime.NumCPU())
+		nThreads = utils.Max(1, runtime.NumCPU())
 	}
 
 	var wg sync.WaitGroup
@@ -73,11 +74,4 @@ func (p *AnnoyIndexMultiThreadedBuildPolicy) LockRoots() {
 
 func (p *AnnoyIndexMultiThreadedBuildPolicy) UnlockRoots() {
 	p.rootsMutex.Unlock()
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }

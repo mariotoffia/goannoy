@@ -5,18 +5,26 @@ import (
 	"unsafe"
 
 	"github.com/mariotoffia/goannoy/distance"
-	"github.com/mariotoffia/goannoy/random"
+	"github.com/mariotoffia/goannoy/interfaces"
 	"github.com/mariotoffia/goannoy/vector"
 )
 
-type AngularDistanceImpl[TV distance.VectorType, TR random.RandomTypes] struct{}
+type AngularDistanceImpl[TV interfaces.VectorType, TR interfaces.RandomTypes] struct{}
 
-func (a *AngularDistanceImpl[TV, TR]) NewNode(vectorLength int) *AngularNodeImpl[TV] {
+func (a *AngularDistanceImpl[TV, TR]) MapNodeToMemory(mem unsafe.Pointer, itemIndex, vectorLength int) *AngularNodeImpl[TV] {
+	return (*AngularNodeImpl[TV])(
+		unsafe.Add(
+			mem,
+			itemIndex*(*AngularNodeImpl[TV])(nil).Size(vectorLength),
+		))
+}
+
+func (a *AngularDistanceImpl[TV, TR]) NewNodeFromGC(vectorLength int) *AngularNodeImpl[TV] {
 	return &AngularNodeImpl[TV]{}
 }
 
 // PreProcess implements the `interfaces.DistancePreprocessor` interface.
-func (a *AngularDistanceImpl[TV, TR]) PreProcess(nodes []distance.Node[TV], vectorLength int) {
+func (a *AngularDistanceImpl[TV, TR]) PreProcess(nodes []interfaces.Node[TV], vectorLength int) {
 	// DO NOTHING
 }
 
@@ -28,40 +36,47 @@ func (a *AngularDistanceImpl[TV, TR]) Margin(n *AngularNodeImpl[TV], y []TV, vec
 	return vector.DotUnsafe(n.GetRawVector(), (*TV)(unsafe.Pointer(&y[0])), vectorLength)
 }
 
-// Side determines which side x or y.
+// Side determines which side of the children indices to use when a split is made.
 func (a *AngularDistanceImpl[TV, TR]) Side(
-	x *AngularNodeImpl[TV],
-	y []TV,
-	random random.Random[TR],
+	m *AngularNodeImpl[TV],
+	v []TV,
+	random interfaces.Random[TR],
 	vectorLength int,
-) bool {
+) interfaces.Side {
 
-	dotProduct := a.Margin(x, y, vectorLength)
+	dotProduct := a.Margin(m, v, vectorLength)
 
 	if dotProduct != 0 {
-		return dotProduct > 0
+		if dotProduct > 0 {
+			return interfaces.SideRight
+		} else {
+			return interfaces.SideLeft
+		}
 	}
 
-	return random.NextBool()
+	return random.NextSide()
 }
 
 func (a *AngularDistanceImpl[TV, TR]) CreateSplit(
-	nodes []distance.Node[TV], vectorLength,
-	s int,
-	random random.Random[TR],
-	n *AngularNodeImpl[TV],
+	children []interfaces.Node[TV],
+	vectorLength, nodeSize int,
+	random interfaces.Random[TR],
+	m *AngularNodeImpl[TV],
 ) {
 
-	p := a.NewNode(vectorLength)
-	q := a.NewNode(vectorLength)
+	p_mem := make([]byte, nodeSize)
+	q_mem := make([]byte, nodeSize)
 
-	distance.TwoMeans[TV](nodes, vectorLength, random, true, p, q)
+	p := (*AngularNodeImpl[TV])(unsafe.Pointer(&p_mem[0]))
+	q := (*AngularNodeImpl[TV])(unsafe.Pointer(&q_mem[0]))
+
+	distance.TwoMeans[TV](children, vectorLength, random, true, p, q)
 
 	for z := 0; z < vectorLength; z++ {
-		n.v[z] = p.v[z] - q.v[z]
+		m.v[z] = p.v[z] - q.v[z]
 	}
 
-	n.Normalize(vectorLength)
+	m.Normalize(vectorLength)
 }
 
 // NormalizeDistance implements the `interfaces.DistanceNormalizer` interface.

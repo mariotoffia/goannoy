@@ -4,7 +4,7 @@ import (
 	"math"
 	"unsafe"
 
-	"github.com/mariotoffia/goannoy/distance"
+	"github.com/mariotoffia/goannoy/interfaces"
 	"github.com/mariotoffia/goannoy/vector"
 )
 
@@ -16,7 +16,7 @@ import (
 // - A vector associated with it
 // - Two children
 // All nodes occupy the same amount of memory
-type AngularNodeImpl[TV distance.VectorType] struct {
+type AngularNodeImpl[TV interfaces.VectorType] struct {
 	// n_descendants is the number of descendants of this node.
 	//
 	// * All nodes with n_descendants == 1 are leaf nodes.
@@ -40,15 +40,6 @@ type AngularNodeImpl[TV distance.VectorType] struct {
 	// ```
 	children [2]int
 	v        [0]TV
-}
-
-// NewNode creates a new AngularNodeImpl from memory _mem_.
-//
-// This is useful, when a file has been loaded as a memory mapped file, or
-// as a chunk of memory and each node is just mapped to a memory region.
-func NewNode[TV distance.VectorType](mem *byte) *AngularNodeImpl[TV] {
-	n := (*AngularNodeImpl[TV])(unsafe.Pointer(mem))
-	return n
 }
 
 func (n *AngularNodeImpl[TV]) Size(vectorLength int) int {
@@ -78,7 +69,7 @@ func (n *AngularNodeImpl[TV]) GetRawChildren() *int {
 
 func (n *AngularNodeImpl[TV]) GetChildren() []int {
 	if n.n_descendants == 0 {
-		return distance.EmptyChildren
+		return interfaces.EmptyChildren
 	}
 
 	return unsafe.Slice((*int)(unsafe.Pointer(&n.children)), n.n_descendants)
@@ -132,7 +123,7 @@ func (n *AngularNodeImpl[TV]) InitNode(vectorLength int) {
 	*norm = vector.DotUnsafe(n.GetRawVector(), n.GetRawVector(), vectorLength)
 }
 
-func (n *AngularNodeImpl[TV]) CopyNodeTo(dst distance.Node[TV], vectorLength int) {
+func (n *AngularNodeImpl[TV]) CopyNodeTo(dst interfaces.Node[TV], vectorLength int) {
 	dstPtr := (unsafe.Pointer(dst.(*AngularNodeImpl[TV])))
 	srcPtr := unsafe.Pointer(n)
 	size := n.Size(vectorLength)
@@ -146,7 +137,7 @@ func (x *AngularNodeImpl[TV]) MaxNumChildren(vectorLength int) int {
 	return int((uintptr(x.Size(vectorLength)) - unsafe.Offsetof(x.children)) / unsafe.Sizeof(x.children[0]))
 }
 
-func (x *AngularNodeImpl[TV]) Distance(to distance.Node[TV], vectorLength int) TV {
+func (x *AngularNodeImpl[TV]) Distance(to interfaces.Node[TV], vectorLength int) TV {
 	t := to.(*AngularNodeImpl[TV])
 	pp := *(*TV)(unsafe.Pointer(&x.children))
 	qq := *(*TV)(unsafe.Pointer(&t.children))
