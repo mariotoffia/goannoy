@@ -76,7 +76,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) GetItemVector(itemIndex int) []TV {
 
 	// Map the node onto the memory
 	node := idx.distance.MapNodeToMemory(
-		unsafe.Pointer(idx._nodes),
+		idx._nodes,
 		itemIndex,
 		idx.vectorLength,
 	)
@@ -98,7 +98,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) AddItem(itemIndex int, v []TV) {
 
 	// Map the node onto the memory
 	node := idx.distance.MapNodeToMemory(
-		unsafe.Pointer(idx._nodes),
+		idx._nodes,
 		itemIndex,
 		idx.vectorLength,
 	)
@@ -385,7 +385,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) makeTree(
 
 	// If we didn't find a hyperplane, just randomize sides as a last option
 	for {
-		if idx.splitImbalance(children_indices[0], children_indices[1]) > 0.99 {
+		if idx.splitImbalance(children_indices[0], children_indices[1]) <= 0.99 {
 			break
 		}
 

@@ -42,7 +42,11 @@ func (a *AngularDistanceImpl[TV, TR]) Margin(n *AngularNodeImpl[TV], y []TV, vec
 		panic("y is empty")
 	}
 
-	return vector.DotUnsafe(n.GetRawVector(), (*TV)(unsafe.Pointer(&y[0])), vectorLength)
+	return vector.DotUnsafe(
+		n.GetRawVector(),
+		(*TV)(unsafe.Pointer(unsafe.SliceData(y))),
+		vectorLength,
+	)
 }
 
 // Side determines which side of the children indices to use when a split is made.
@@ -72,12 +76,11 @@ func (a *AngularDistanceImpl[TV, TR]) CreateSplit(
 	random interfaces.Random[TR],
 	m interfaces.Node[TV],
 ) {
-
 	p_mem := make([]byte, nodeSize)
 	q_mem := make([]byte, nodeSize)
 
-	p := (*AngularNodeImpl[TV])(unsafe.Pointer(&p_mem[0]))
-	q := (*AngularNodeImpl[TV])(unsafe.Pointer(&q_mem[0]))
+	p := (*AngularNodeImpl[TV])(unsafe.Pointer(unsafe.SliceData(p_mem)))
+	q := (*AngularNodeImpl[TV])(unsafe.Pointer(unsafe.SliceData(q_mem)))
 
 	distance.TwoMeans[TV](children, vectorLength, random, true, p, q)
 

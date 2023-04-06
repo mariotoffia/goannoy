@@ -57,7 +57,7 @@ func (n *AngularNodeImpl[TV]) GetVector(vectorLength int) []TV {
 
 func (n *AngularNodeImpl[TV]) SetVector(v []TV) {
 	dst := unsafe.Pointer(&n.v)
-	src := unsafe.Pointer(&v[0])
+	src := unsafe.Pointer(unsafe.SliceData(v))
 	size := uintptr(len(v)) * unsafe.Sizeof(TV(0))
 
 	copy((*[1 << 31]byte)(dst)[:size], (*[1 << 31]byte)(src)[:size])
@@ -124,7 +124,7 @@ func (n *AngularNodeImpl[TV]) InitNode(vectorLength int) {
 }
 
 func (n *AngularNodeImpl[TV]) CopyNodeTo(dst interfaces.Node[TV], vectorLength int) {
-	dstPtr := (unsafe.Pointer(dst.(*AngularNodeImpl[TV])))
+	dstPtr := unsafe.Pointer(dst.(*AngularNodeImpl[TV]))
 	srcPtr := unsafe.Pointer(n)
 	size := n.Size(vectorLength)
 
