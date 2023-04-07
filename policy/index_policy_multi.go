@@ -17,7 +17,7 @@ type AnnoyIndexMultiThreadedBuildPolicy struct {
 
 func (p *AnnoyIndexMultiThreadedBuildPolicy) Build(
 	builder interfaces.AnnoyIndexBuilder,
-	treesPerThread, nThreads int,
+	numberOfTrees, nThreads int,
 ) {
 	if nThreads == -1 {
 		nThreads = utils.Max(1, runtime.NumCPU())
@@ -27,9 +27,9 @@ func (p *AnnoyIndexMultiThreadedBuildPolicy) Build(
 	wg.Add(nThreads)
 
 	for threadIdx := 0; threadIdx < nThreads; threadIdx++ {
-		tpt := treesPerThread
-		if treesPerThread != -1 {
-			tpt = int(math.Floor(float64(treesPerThread+threadIdx) / float64(nThreads)))
+		numTreesPerThread := numberOfTrees
+		if numberOfTrees != -1 {
+			numTreesPerThread = int(math.Floor(float64(numberOfTrees+threadIdx) / float64(nThreads)))
 		}
 
 		go func(threadIdx int, treesPerThread int) {
@@ -38,7 +38,7 @@ func (p *AnnoyIndexMultiThreadedBuildPolicy) Build(
 
 			builder.ThreadBuild(treesPerThread, threadIdx, p)
 
-		}(threadIdx, tpt)
+		}(threadIdx, numTreesPerThread)
 	}
 
 	wg.Wait()

@@ -6,9 +6,9 @@ type AnnoyIndexSingleThreadedBuildPolicy struct{}
 
 func (p *AnnoyIndexSingleThreadedBuildPolicy) Build(
 	builder interfaces.AnnoyIndexBuilder,
-	treesPerThread, nThreads int,
+	numberOfTrees, nThreads int,
 ) {
-	builder.ThreadBuild(treesPerThread, 0, p)
+	builder.ThreadBuild(numberOfTrees, 0, p)
 }
 
 func (p *AnnoyIndexSingleThreadedBuildPolicy) LockNNodes() {

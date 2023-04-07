@@ -104,7 +104,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) AddItem(itemIndex int, v []TV) {
 	}
 }
 
-func (idx *AnnoyIndexImpl[TV, TR]) Build(treesPerThread int) {
+func (idx *AnnoyIndexImpl[TV, TR]) Build(numberOfTrees, nThreads int) {
 	if idx.indexLoaded {
 		panic("Can't build a loaded index")
 	}
@@ -122,7 +122,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) Build(treesPerThread int) {
 
 	idx._n_nodes = idx._n_items
 
-	idx.buildPolicy.Build(idx, treesPerThread, treesPerThread)
+	idx.buildPolicy.Build(idx, numberOfTrees, nThreads)
 
 	// Also, copy the roots into the last segment of the array
 	// This way we can load them faster without reading the whole file
@@ -236,6 +236,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) Load(fileName string) {
 		panic("File size is not a multiple of node size")
 	}
 
+	// TODO: Use mmap instead
 	idx.allocateSize(int(fileSize)/idx.nodeSize, nil)
 
 	idx._roots = nil

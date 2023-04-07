@@ -16,8 +16,8 @@ func TestPrecision(t *testing.T) {
 
 	defer allocator.Free()
 
-	n := 100
-	vectorLength := 1536
+	n := 100000
+	vectorLength := 40
 
 	idx := index.NewAnnoyIndexImpl[float64, uint32](
 		vectorLength,
@@ -46,7 +46,7 @@ func TestPrecision(t *testing.T) {
 	}
 
 	fmt.Println("Building index num_trees = 2 * num_features ...")
-	idx.Build(2 * vectorLength)
+	idx.Build(2*vectorLength, -1)
 	fmt.Println("Done building index")
 
 	fmt.Println("Saving index ...")

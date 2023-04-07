@@ -1,7 +1,7 @@
 package interfaces
 
 type AnnoyIndexBuildPolicy interface {
-	Build(builder AnnoyIndexBuilder, treesPerThread, nThreads int)
+	Build(builder AnnoyIndexBuilder, numberOfTrees, nThreads int)
 	LockNNodes()
 	UnlockNNodes()
 	LockNodes()
