@@ -16,7 +16,7 @@ func TestPrecision(t *testing.T) {
 
 	defer allocator.Free()
 
-	n := 100000
+	n := 1000000
 	vectorLength := 40
 
 	idx := index.NewAnnoyIndexImpl[float64, uint32](

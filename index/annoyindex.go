@@ -1,6 +1,8 @@
 package index
 
 import (
+	"fmt"
+	"io"
 	"os"
 	"unsafe"
 
@@ -244,7 +246,14 @@ func (idx *AnnoyIndexImpl[TV, TR]) Load(fileName string) {
 
 	data := unsafe.Slice((*byte)(idx._nodes), idx._nodes_size*idx.nodeSize)
 
-	_, err = file.Read(data)
+	var bytesRead int64
+	for bytesRead < fileSize {
+		n, err := io.ReadFull(file, data[bytesRead:])
+		if err != nil && err != io.ErrUnexpectedEOF {
+			panic(fmt.Sprintf("Failed to read file: %v", err))
+		}
+		bytesRead += int64(n)
+	}
 
 	if err != nil {
 		panic(err)

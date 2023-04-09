@@ -6,7 +6,7 @@ PROJECT_NAME := "goannoy"
 BUILD_DIR := "bin"
 CMD_SHELL := "./cmd/shell"
 TEST_DIR := "./tests"
-TEST_TIMEOUT := 60s
+TEST_TIMEOUT := 360s
 COVERAGE_FILE := "coverage.out"
 
 all: build_shell test lint
