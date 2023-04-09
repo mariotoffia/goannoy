@@ -45,7 +45,7 @@ func TestPrecision(t *testing.T) {
 		idx.AddItem(i, v)
 	}
 
-	fmt.Println("Building index num_trees = 2 * num_features ...")
+	fmt.Println("Building index num_trees = 2 * vectorLength ...")
 	idx.Build(2*vectorLength, -1)
 	fmt.Println("Done building index")
 
