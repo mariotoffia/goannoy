@@ -7,7 +7,7 @@ import (
 	"github.com/mariotoffia/goannoy/distance/angular"
 	"github.com/mariotoffia/goannoy/index"
 	"github.com/mariotoffia/goannoy/index/memory"
-	"github.com/mariotoffia/goannoy/policy"
+	"github.com/mariotoffia/goannoy/index/policy"
 	"github.com/mariotoffia/goannoy/random"
 )
 
