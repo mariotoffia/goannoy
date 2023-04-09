@@ -1,6 +1,9 @@
-package memory
+package interfaces
 
-import "io"
+import (
+	"io"
+	"unsafe"
+)
 
 type IndexMemoryAllocator interface {
 	Open(fqFile string) (IndexMemory, error)
@@ -9,5 +12,6 @@ type IndexMemoryAllocator interface {
 
 type IndexMemory interface {
 	io.Closer
-	Ptr() uintptr
+	Ptr() unsafe.Pointer
+	Size() int64
 }

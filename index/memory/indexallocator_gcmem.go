@@ -5,42 +5,52 @@ import (
 	"io"
 	"os"
 	"unsafe"
+
+	"github.com/mariotoffia/goannoy/interfaces"
 )
 
-type FileIndexer struct {
+type fileIndexer struct {
 	indexes map[string]*fileIndex
 }
 
 type fileIndex struct {
 	fqFile string
-	ptr    uintptr
+	ptr    unsafe.Pointer
 	data   []byte
-	parent *FileIndexer
+	size   int64
+	parent *fileIndexer
 }
 
-func (mi *fileIndex) Ptr() uintptr {
-	return mi.ptr
+func (fi *fileIndex) Ptr() unsafe.Pointer {
+	return fi.ptr
+}
+
+func (fi *fileIndex) Size() int64 {
+	return fi.size
 }
 
 // Implements `io.Closer` interface
-func (mi *fileIndex) Close() error {
-	delete(mi.parent.indexes, mi.fqFile)
-	mi.data = nil
+func (fi *fileIndex) Close() error {
+	delete(fi.parent.indexes, fi.fqFile)
+
+	fi.data = nil
+	fi.ptr = nil
+
 	return nil
 }
 
-func NewFileIndexer() *FileIndexer {
-	return &FileIndexer{
+func FileIndexMemoryAllocator() *fileIndexer {
+	return &fileIndexer{
 		indexes: map[string]*fileIndex{},
 	}
 }
 
-func (mm *FileIndexer) Get(fqFile string) (IndexMemory, bool) {
+func (mm *fileIndexer) Get(fqFile string) (interfaces.IndexMemory, bool) {
 	index, ok := mm.indexes[fqFile]
 	return index, ok
 }
 
-func (mm *FileIndexer) Open(fqFile string) (IndexMemory, error) {
+func (mm *fileIndexer) Open(fqFile string) (interfaces.IndexMemory, error) {
 	file, err := os.Open(fqFile)
 	if err != nil {
 		return nil, err
@@ -55,7 +65,9 @@ func (mm *FileIndexer) Open(fqFile string) (IndexMemory, error) {
 	}
 
 	data := make([]byte, fileInfo.Size())
+
 	var bytesRead int64
+
 	for bytesRead < fileInfo.Size() {
 		n, err := io.ReadFull(file, data[bytesRead:])
 		if err != nil && err != io.ErrUnexpectedEOF {
@@ -72,7 +84,8 @@ func (mm *FileIndexer) Open(fqFile string) (IndexMemory, error) {
 	fi := &fileIndex{
 		parent: mm,
 		fqFile: fqFile,
-		ptr:    uintptr(unsafe.Pointer(&data[0])),
+		size:   fileInfo.Size(),
+		ptr:    unsafe.Pointer(&data[0]),
 		data:   data,
 	}
 

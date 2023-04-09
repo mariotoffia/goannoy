@@ -6,6 +6,7 @@ import (
 
 	"github.com/mariotoffia/goannoy/distance/angular"
 	"github.com/mariotoffia/goannoy/index"
+	"github.com/mariotoffia/goannoy/index/memory"
 	"github.com/mariotoffia/goannoy/policy"
 	"github.com/mariotoffia/goannoy/random"
 )
@@ -25,7 +26,10 @@ func TestPrecision(t *testing.T) {
 		&angular.AngularDistanceImpl[float64, uint32]{},
 		&policy.AnnoyIndexMultiThreadedBuildPolicy{},
 		allocator,
+		memory.MmapIndexAllocator(),
 	)
+
+	defer idx.Close()
 
 	vec_rnd := random.NewGoRandom()
 

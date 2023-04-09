@@ -8,5 +8,5 @@ type AnnoyIndex[
 }
 
 type AnnoyIndexBuilder interface {
-	ThreadBuild(treesPerThread, threadIdx int, threadedBuildPolicy AnnoyIndexBuildPolicy)
+	ThreadBuild(treesPerWorker, workerIdx int, threadedBuildPolicy AnnoyIndexBuildPolicy)
 }

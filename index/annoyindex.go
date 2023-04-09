@@ -2,7 +2,6 @@ package index
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"unsafe"
 
@@ -27,18 +26,20 @@ type AnnoyIndexImpl[
 	// nodeSize the the complete size of the node in bytes.
 	nodeSize int
 	// _n_items is how many nodes exists in the index.
-	_n_items       int
-	_nodes         unsafe.Pointer
-	_n_nodes       int
-	_nodes_size    int
-	_roots         []int
-	maxDescendants int
-	random         interfaces.Random[TR]
-	indexLoaded    bool
-	indexBuilt     bool
-	distance       interfaces.Distance[TV, TR]
-	buildPolicy    interfaces.AnnoyIndexBuildPolicy
-	allocator      Allocator
+	_n_items             int
+	_nodes               unsafe.Pointer
+	_n_nodes             int
+	_nodes_size          int
+	_roots               []int
+	maxDescendants       int
+	random               interfaces.Random[TR]
+	indexLoaded          bool
+	indexBuilt           bool
+	distance             interfaces.Distance[TV, TR]
+	buildPolicy          interfaces.AnnoyIndexBuildPolicy
+	allocator            Allocator
+	indexMemoryAllocator interfaces.IndexMemoryAllocator
+	indexMemory          interfaces.IndexMemory
 }
 
 func NewAnnoyIndexImpl[
@@ -49,22 +50,46 @@ func NewAnnoyIndexImpl[
 	distance interfaces.Distance[TV, TR],
 	buildPolicy interfaces.AnnoyIndexBuildPolicy,
 	allocator Allocator,
+	indexMemoryAllocator interfaces.IndexMemoryAllocator,
 ) *AnnoyIndexImpl[TV, TR] {
 	// Create a single node to query it for sizes
 	node := distance.NewNodeFromGC(vectorLength)
 
 	index := &AnnoyIndexImpl[TV, TR]{
-		vectorLength:   vectorLength,                      // _f
-		random:         random,                            // _seed
-		nodeSize:       node.Size(vectorLength),           // _s
-		maxDescendants: node.MaxNumChildren(vectorLength), // _K
-		indexBuilt:     false,                             // _built
-		distance:       distance,
-		allocator:      allocator,
-		buildPolicy:    buildPolicy,
+		vectorLength:         vectorLength,                      // _f
+		random:               random,                            // _seed
+		nodeSize:             node.Size(vectorLength),           // _s
+		maxDescendants:       node.MaxNumChildren(vectorLength), // _K
+		indexBuilt:           false,                             // _built
+		distance:             distance,
+		allocator:            allocator,
+		buildPolicy:          buildPolicy,
+		indexMemoryAllocator: indexMemoryAllocator,
 	}
 
 	return index
+}
+
+// Implements `io.Closer` interface
+func (idx *AnnoyIndexImpl[TV, TR]) Close() error {
+	var err error
+
+	if idx.indexMemory != nil {
+		err = idx.indexMemory.Close()
+		idx.indexMemory = nil
+	}
+
+	idx.allocator.Free()
+
+	idx._nodes = nil
+	idx.indexLoaded = false
+	idx._n_items = 0
+	idx._n_nodes = 0
+	idx._nodes_size = 0
+	idx.random = idx.random.CloneAndReset()
+	idx._roots = nil
+
+	return err
 }
 
 // VectorLength returns the vector length of the index.
@@ -106,7 +131,15 @@ func (idx *AnnoyIndexImpl[TV, TR]) AddItem(itemIndex int, v []TV) {
 	}
 }
 
-func (idx *AnnoyIndexImpl[TV, TR]) Build(numberOfTrees, nThreads int) {
+// Build will build a a new index. The _numberOfTrees_ is the number of trees
+// to build. The _numWorkers_ is the number of workers to use when building
+// the index. If _numWorkers_ is -1, the number of workers will be set to the
+// number of CPU cores. If _numWorkers_ is 0, the number of workers will be
+// set to 1. Hence, run on current goroutine.
+//
+// The _numberOfTrees_ will be split amongst the workers. The more number
+// of trees, the larger the index. But it also will be more precise.
+func (idx *AnnoyIndexImpl[TV, TR]) Build(numberOfTrees, numWorkers int) {
 	if idx.indexLoaded {
 		panic("Can't build a loaded index")
 	}
@@ -124,7 +157,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) Build(numberOfTrees, nThreads int) {
 
 	idx._n_nodes = idx._n_items
 
-	idx.buildPolicy.Build(idx, numberOfTrees, nThreads)
+	idx.buildPolicy.Build(idx, numberOfTrees, numWorkers)
 
 	// Also, copy the roots into the last segment of the array
 	// This way we can load them faster without reading the whole file
@@ -146,18 +179,18 @@ func (idx *AnnoyIndexImpl[TV, TR]) Build(numberOfTrees, nThreads int) {
 
 // ThreadBuild is called from the build policy to build the index.
 func (idx *AnnoyIndexImpl[TV, TR]) ThreadBuild(
-	treesPerThread, threadIdx int,
+	treesPerWorker, workerIdx int,
 	threadedBuildPolicy interfaces.AnnoyIndexBuildPolicy,
 ) {
 	rnd := idx.random.CloneAndReset()
 
 	// Each thread needs its own seed, otherwise each thread would be building the same tree(s)
-	rnd.SetSeed(rnd.GetSeed() + TR(threadIdx))
+	rnd.SetSeed(rnd.GetSeed() + TR(workerIdx))
 
 	var threadRoots []int
 
 	for {
-		if treesPerThread == -1 {
+		if treesPerWorker == -1 {
 			threadedBuildPolicy.LockNNodes()
 			if idx._n_nodes >= 2*idx._n_items {
 				threadedBuildPolicy.UnlockNNodes()
@@ -165,7 +198,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) ThreadBuild(
 			}
 			threadedBuildPolicy.UnlockNNodes()
 		} else {
-			if len(threadRoots) >= treesPerThread {
+			if len(threadRoots) >= treesPerWorker {
 				break
 			}
 		}
@@ -195,14 +228,14 @@ func (idx *AnnoyIndexImpl[TV, TR]) ThreadBuild(
 	threadedBuildPolicy.UnlockRoots()
 }
 
-func (idx *AnnoyIndexImpl[TV, TR]) Save(fileName string) {
+func (idx *AnnoyIndexImpl[TV, TR]) Save(fileName string) error {
 	if !idx.indexBuilt {
-		panic("Can't save an index that hasn't been built")
+		return fmt.Errorf("can't save an index that hasn't been built")
 	}
 
 	file, err := os.Create(fileName)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	defer file.Close()
@@ -212,52 +245,33 @@ func (idx *AnnoyIndexImpl[TV, TR]) Save(fileName string) {
 	_, err = file.Write(data)
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	idx.unload()
-	idx.Load(fileName)
+	return idx.Load(fileName)
 }
 
-func (idx *AnnoyIndexImpl[TV, TR]) Load(fileName string) {
-	file, err := os.Open(fileName)
+func (idx *AnnoyIndexImpl[TV, TR]) Load(fileName string) error {
+	// Close any existing index and free resources
+	idx.Close()
+
+	var err error
+
+	idx.indexMemory, err = idx.indexMemoryAllocator.Open(fileName)
+
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	defer file.Close()
+	if idx.indexMemory.Size()%int64(idx.nodeSize) != 0 {
+		idx.Close()
 
-	fileInfo, err := file.Stat()
-	if err != nil {
-		panic(err)
+		return fmt.Errorf("file size is not a multiple of node size")
 	}
 
-	fileSize := fileInfo.Size()
-
-	if fileSize%int64(idx.nodeSize) != 0 {
-		panic("File size is not a multiple of node size")
-	}
-
-	// TODO: Use mmap instead
-	idx.allocateSize(int(fileSize)/idx.nodeSize, nil)
-
+	idx._nodes = idx.indexMemory.Ptr()
 	idx._roots = nil
-	idx._n_nodes = int(fileSize) / idx.nodeSize
-
-	data := unsafe.Slice((*byte)(idx._nodes), idx._nodes_size*idx.nodeSize)
-
-	var bytesRead int64
-	for bytesRead < fileSize {
-		n, err := io.ReadFull(file, data[bytesRead:])
-		if err != nil && err != io.ErrUnexpectedEOF {
-			panic(fmt.Sprintf("Failed to read file: %v", err))
-		}
-		bytesRead += int64(n)
-	}
-
-	if err != nil {
-		panic(err)
-	}
+	idx._n_nodes = int(idx.indexMemory.Size()) / idx.nodeSize
 
 	m := -1
 
@@ -287,11 +301,8 @@ func (idx *AnnoyIndexImpl[TV, TR]) Load(fileName string) {
 	idx.indexBuilt = true
 	idx.indexLoaded = true
 	idx._n_items = m
-}
 
-func (idx *AnnoyIndexImpl[TV, TR]) unload() {
-	idx.allocator.Free()
-	idx.reinitialize()
+	return nil
 }
 
 func (idx *AnnoyIndexImpl[TV, TR]) getNode(index int) interfaces.Node[TV] {
@@ -481,14 +492,4 @@ func (idx *AnnoyIndexImpl[TV, TR]) allocateSize(
 			threadedBuildPolicy.UnlockNodes()
 		}
 	}
-}
-
-func (idx *AnnoyIndexImpl[TV, TR]) reinitialize() {
-	idx._nodes = nil
-	idx.indexLoaded = false
-	idx._n_items = 0
-	idx._n_nodes = 0
-	idx._nodes_size = 0
-	idx.random = idx.random.CloneAndReset()
-	idx._roots = nil
 }
