@@ -2,6 +2,7 @@ package index
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"unsafe"
 
@@ -469,7 +470,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) splitImbalance(
 	rs := float64(len(right_indices))
 
 	f := ls / (ls + rs + 1e-9) // Avoid 0/0
-	return utils.MaxFloat64(f, 1-f)
+	return math.Max(f, 1-f)
 }
 
 func (idx *AnnoyIndexImpl[TV, TR]) allocateSize(

@@ -17,28 +17,28 @@ type AnnoyIndexMultiThreadedBuildPolicy struct {
 
 func (p *AnnoyIndexMultiThreadedBuildPolicy) Build(
 	builder interfaces.AnnoyIndexBuilder,
-	numberOfTrees, nThreads int,
+	numberOfTrees, numberOfWorkers int,
 ) {
-	if nThreads == -1 {
-		nThreads = utils.Max(1, runtime.NumCPU())
+	if numberOfWorkers == -1 {
+		numberOfWorkers = utils.Max(1, runtime.NumCPU())
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(nThreads)
+	wg.Add(numberOfWorkers)
 
-	for threadIdx := 0; threadIdx < nThreads; threadIdx++ {
-		numTreesPerThread := numberOfTrees
+	for workerIdx := 0; workerIdx < numberOfWorkers; workerIdx++ {
+		numTreesPerWorker := numberOfTrees
 		if numberOfTrees != -1 {
-			numTreesPerThread = int(math.Floor(float64(numberOfTrees+threadIdx) / float64(nThreads)))
+			numTreesPerWorker = int(math.Floor(float64(numberOfTrees+workerIdx) / float64(numberOfWorkers)))
 		}
 
-		go func(threadIdx int, treesPerThread int) {
+		go func(workerIdx int, treesPerWorker int) {
 
 			defer wg.Done()
 
-			builder.ThreadBuild(treesPerThread, threadIdx, p)
+			builder.ThreadBuild(treesPerWorker, workerIdx, p)
 
-		}(threadIdx, numTreesPerThread)
+		}(workerIdx, numTreesPerWorker)
 	}
 
 	wg.Wait()
