@@ -2,35 +2,39 @@ package policy
 
 import "github.com/mariotoffia/goannoy/interfaces"
 
-type AnnoyIndexSingleThreadedBuildPolicy struct{}
+func Single() *annoyIndexSingleThreadedBuildPolicy {
+	return &annoyIndexSingleThreadedBuildPolicy{}
+}
 
-func (p *AnnoyIndexSingleThreadedBuildPolicy) Build(
+type annoyIndexSingleThreadedBuildPolicy struct{}
+
+func (p *annoyIndexSingleThreadedBuildPolicy) Build(
 	builder interfaces.AnnoyIndexBuilder,
 	numberOfTrees, nThreads int,
 ) {
 	builder.ThreadBuild(numberOfTrees, 0, p)
 }
 
-func (p *AnnoyIndexSingleThreadedBuildPolicy) LockNNodes() {
+func (p *annoyIndexSingleThreadedBuildPolicy) LockNNodes() {
 }
 
-func (p *AnnoyIndexSingleThreadedBuildPolicy) UnlockNNodes() {
+func (p *annoyIndexSingleThreadedBuildPolicy) UnlockNNodes() {
 }
 
-func (p *AnnoyIndexSingleThreadedBuildPolicy) LockNodes() {
+func (p *annoyIndexSingleThreadedBuildPolicy) LockNodes() {
 }
 
-func (p *AnnoyIndexSingleThreadedBuildPolicy) UnlockNodes() {
+func (p *annoyIndexSingleThreadedBuildPolicy) UnlockNodes() {
 }
 
-func (p *AnnoyIndexSingleThreadedBuildPolicy) LockSharedNodes() {
+func (p *annoyIndexSingleThreadedBuildPolicy) LockSharedNodes() {
 }
 
-func (p *AnnoyIndexSingleThreadedBuildPolicy) UnlockSharedNodes() {
+func (p *annoyIndexSingleThreadedBuildPolicy) UnlockSharedNodes() {
 }
 
-func (p *AnnoyIndexSingleThreadedBuildPolicy) LockRoots() {
+func (p *annoyIndexSingleThreadedBuildPolicy) LockRoots() {
 }
 
-func (p *AnnoyIndexSingleThreadedBuildPolicy) UnlockRoots() {
+func (p *annoyIndexSingleThreadedBuildPolicy) UnlockRoots() {
 }

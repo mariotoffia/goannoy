@@ -9,13 +9,17 @@ import (
 	"github.com/mariotoffia/goannoy/utils"
 )
 
-type AnnoyIndexMultiThreadedBuildPolicy struct {
+func Multi() *annoyIndexMultiThreadedBuildPolicy {
+	return &annoyIndexMultiThreadedBuildPolicy{}
+}
+
+type annoyIndexMultiThreadedBuildPolicy struct {
 	nodesMutex  sync.RWMutex
 	nNodesMutex sync.Mutex
 	rootsMutex  sync.Mutex
 }
 
-func (p *AnnoyIndexMultiThreadedBuildPolicy) Build(
+func (p *annoyIndexMultiThreadedBuildPolicy) Build(
 	builder interfaces.AnnoyIndexBuilder,
 	numberOfTrees, numberOfWorkers int,
 ) {
@@ -44,34 +48,34 @@ func (p *AnnoyIndexMultiThreadedBuildPolicy) Build(
 	wg.Wait()
 }
 
-func (p *AnnoyIndexMultiThreadedBuildPolicy) LockNNodes() {
+func (p *annoyIndexMultiThreadedBuildPolicy) LockNNodes() {
 	p.nNodesMutex.Lock()
 }
 
-func (p *AnnoyIndexMultiThreadedBuildPolicy) UnlockNNodes() {
+func (p *annoyIndexMultiThreadedBuildPolicy) UnlockNNodes() {
 	p.nNodesMutex.Unlock()
 }
 
-func (p *AnnoyIndexMultiThreadedBuildPolicy) LockNodes() {
+func (p *annoyIndexMultiThreadedBuildPolicy) LockNodes() {
 	p.nodesMutex.Lock()
 }
 
-func (p *AnnoyIndexMultiThreadedBuildPolicy) UnlockNodes() {
+func (p *annoyIndexMultiThreadedBuildPolicy) UnlockNodes() {
 	p.nodesMutex.Unlock()
 }
 
-func (p *AnnoyIndexMultiThreadedBuildPolicy) LockSharedNodes() {
+func (p *annoyIndexMultiThreadedBuildPolicy) LockSharedNodes() {
 	p.nodesMutex.RLock()
 }
 
-func (p *AnnoyIndexMultiThreadedBuildPolicy) UnlockSharedNodes() {
+func (p *annoyIndexMultiThreadedBuildPolicy) UnlockSharedNodes() {
 	p.nodesMutex.RUnlock()
 }
 
-func (p *AnnoyIndexMultiThreadedBuildPolicy) LockRoots() {
+func (p *annoyIndexMultiThreadedBuildPolicy) LockRoots() {
 	p.rootsMutex.Lock()
 }
 
-func (p *AnnoyIndexMultiThreadedBuildPolicy) UnlockRoots() {
+func (p *annoyIndexMultiThreadedBuildPolicy) UnlockRoots() {
 	p.rootsMutex.Unlock()
 }

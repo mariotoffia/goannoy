@@ -24,7 +24,7 @@ func TestPrecision(t *testing.T) {
 		vectorLength,
 		rnd,
 		&angular.AngularDistanceImpl[float64, uint32]{},
-		&policy.AnnoyIndexMultiThreadedBuildPolicy{},
+		policy.Multi(),
 		allocator,
 		memory.MmapIndexAllocator(),
 	)

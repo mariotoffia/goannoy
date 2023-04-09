@@ -185,7 +185,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) ThreadBuild(
 ) {
 	rnd := idx.random.CloneAndReset()
 
-	// Each thread needs its own seed, otherwise each thread would be building the same tree(s)
+	// Each worker needs its own seed, otherwise each worker would be building the same tree(s)
 	rnd.SetSeed(rnd.GetSeed() + TR(workerIdx))
 
 	var threadRoots []int
