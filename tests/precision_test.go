@@ -13,7 +13,7 @@ import (
 
 func TestPrecision(t *testing.T) {
 	rnd := random.NewKiss32Random(uint32(0) /*default seed*/)
-	allocator := index.NewArenaAllocator()
+	allocator := memory.NewBuildIndexMemoryArenaAllocator()
 
 	defer allocator.Free()
 

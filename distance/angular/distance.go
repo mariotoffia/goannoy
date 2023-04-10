@@ -37,7 +37,7 @@ func (a *AngularDistanceImpl[TV, TR]) PreProcess(nodes unsafe.Pointer, node_coun
 	// DO NOTHING
 }
 
-func (a *AngularDistanceImpl[TV, TR]) Margin(n *AngularNodeImpl[TV], y []TV, vectorLength int) TV {
+func (a *AngularDistanceImpl[TV, TR]) Margin(n interfaces.Node[TV], y []TV, vectorLength int) TV {
 	if len(y) == 0 {
 		panic("y is empty")
 	}
@@ -100,8 +100,8 @@ func (a *AngularDistanceImpl[TV, TR]) NormalizedDistance(distance TV) TV {
 	return TV(math.Sqrt(math.Max(float64(distance), 0)))
 }
 
-func (a *AngularDistanceImpl[TV, TR]) PQDistance(distance, margin TV, childNr int) TV {
-	if childNr == 0 {
+func (a *AngularDistanceImpl[TV, TR]) PQDistance(distance, margin TV, side interfaces.Side) TV {
+	if side == interfaces.SideLeft {
 		margin = -margin
 	}
 	return TV(math.Min(float64(distance), float64(margin)))

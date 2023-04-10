@@ -20,6 +20,8 @@ type Distance[TV VectorType, TR RandomTypes] interface {
 	//
 	// The _nodes_ is a pointer to the beginning of the memory where the nodes are stored.
 	PreProcess(nodes unsafe.Pointer, node_count, vectorLength int)
+	// Margin will return the margin for the node.
+	Margin(n Node[TV], y []TV, vectorLength int) TV
 	// NormalizeDistance will normalize the distance to a value between 0 and 1.
 	NormalizedDistance(distance TV) TV
 	// CreateSplit will write to split node _m_ based on the _children_ nodes. The _nodeSize_ is the
@@ -42,4 +44,6 @@ type Distance[TV VectorType, TR RandomTypes] interface {
 	MapNodeToMemory(mem unsafe.Pointer, itemIndex, vectorLength int) Node[TV]
 	// NewNodeFromGC will create a new node from the garbage collector managed memory.
 	NewNodeFromGC(vectorLength int) Node[TV]
+	PQInitialValue() TV
+	PQDistance(distance, margin TV, side Side) TV
 }

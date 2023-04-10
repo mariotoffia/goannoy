@@ -1,11 +1,11 @@
-package index
+package memory
 
 import (
 	"arena"
 	"unsafe"
 )
 
-type ArenaAllocatorImpl struct {
+type BuildIndexMemoryArenaAllocatorImpl struct {
 	currentArena *arena.Arena
 	ptr          unsafe.Pointer
 	ptrSize      int
@@ -13,14 +13,14 @@ type ArenaAllocatorImpl struct {
 	active       []byte
 }
 
-func NewArenaAllocator() *ArenaAllocatorImpl {
-	return &ArenaAllocatorImpl{
+func NewBuildIndexMemoryArenaAllocator() *BuildIndexMemoryArenaAllocatorImpl {
+	return &BuildIndexMemoryArenaAllocatorImpl{
 		currentArena: arena.NewArena(),
 		is64:         unsafe.Sizeof(int(0)) == 8,
 	}
 }
 
-func (a *ArenaAllocatorImpl) Free() {
+func (a *BuildIndexMemoryArenaAllocatorImpl) Free() {
 	if a.currentArena != nil {
 		a.currentArena.Free()
 	}
@@ -31,7 +31,7 @@ func (a *ArenaAllocatorImpl) Free() {
 	a.active = nil
 }
 
-func (a *ArenaAllocatorImpl) Reallocate(byteSize int) unsafe.Pointer {
+func (a *BuildIndexMemoryArenaAllocatorImpl) Reallocate(byteSize int) unsafe.Pointer {
 	// Create a new arena to do the "reallocate" to
 	ar := arena.NewArena()
 
