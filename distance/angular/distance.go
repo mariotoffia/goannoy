@@ -28,7 +28,7 @@ func (a *AngularDistanceImpl[TV, TR]) MapNodeToMemory(
 	return (*AngularNodeImpl[TV])(pos)
 }
 
-func (a *AngularDistanceImpl[TV, TR]) NewNodeFromGC(vectorLength int) interfaces.Node[TV] {
+func (a *AngularDistanceImpl[TV, TR]) PrototypeNode(vectorLength int) interfaces.Node[TV] {
 	return &AngularNodeImpl[TV]{}
 }
 

@@ -124,7 +124,7 @@ func (n *AngularNodeImpl[TV]) CopyNodeTo(dst interfaces.Node[TV], vectorLength i
 	size := n.Size(vectorLength)
 
 	// Copy data from the input slice to the underlying memory
-	copy((*[1 << 31]byte)(dstPtr)[:size], (*[1 << 31]byte)(srcPtr)[:size])
+	copy((*[1 << 30]byte)(dstPtr)[:size], (*[1 << 30]byte)(srcPtr)[:size])
 }
 
 func (x *AngularNodeImpl[TV]) MaxNumChildren(vectorLength int) int {

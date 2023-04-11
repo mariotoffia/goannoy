@@ -42,8 +42,8 @@ type Distance[TV VectorType, TR RandomTypes] interface {
 	) Side
 	// MapNodeToMemory will map the node to existing memory and use that for storage.
 	MapNodeToMemory(mem unsafe.Pointer, itemIndex, vectorLength int) Node[TV]
-	// NewNodeFromGC will create a new node from the garbage collector managed memory.
-	NewNodeFromGC(vectorLength int) Node[TV]
+	// PrototypeNode will create a new node from the garbage collector managed memory.
+	PrototypeNode(vectorLength int) Node[TV]
 	PQInitialValue() TV
 	PQDistance(distance, margin TV, side Side) TV
 }

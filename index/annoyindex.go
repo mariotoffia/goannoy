@@ -1,6 +1,7 @@
 package index
 
 import (
+	"fmt"
 	"math"
 	"unsafe"
 
@@ -52,7 +53,7 @@ func NewAnnoyIndexImpl[
 	indexMemoryAllocator interfaces.IndexMemoryAllocator,
 ) *AnnoyIndexImpl[TV, TR] {
 	// Create a single node to query it for sizes
-	node := distance.NewNodeFromGC(vectorLength)
+	node := distance.PrototypeNode(vectorLength)
 
 	index := &AnnoyIndexImpl[TV, TR]{
 		vectorLength:         vectorLength,                      // _f
@@ -164,12 +165,14 @@ func (idx *AnnoyIndexImpl[TV, TR]) Build(numberOfTrees, numWorkers int) {
 
 	for i := 0; i < len(idx._roots); i++ {
 		dst := idx.getNode(idx._n_nodes + i)
-		src := idx.getNode(i)
+		src := idx.getNode(idx._roots[i])
 
 		src.CopyNodeTo(
 			dst,
 			idx.vectorLength,
 		)
+
+		fmt.Println(src.GetChildren())
 	}
 
 	idx._n_nodes += len(idx._roots)

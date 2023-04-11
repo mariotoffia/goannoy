@@ -8,9 +8,11 @@ import (
 	"github.com/mariotoffia/goannoy/utils"
 )
 
-func (idx *AnnoyIndexImpl[TV, TR]) Get_nns_by_item(
+// GetNnsByItem will search for the closest vectors to the given _item_ in the index. When
+// _numReturn_ is -1, it will search number of trees in index * _numReturn_.
+func (idx *AnnoyIndexImpl[TV, TR]) GetNnsByItem(
 	item int,
-	n, search_k int,
+	numReturn, numNodesToInspect int,
 ) (result []int, distances []TV) {
 
 	node := idx.distance.MapNodeToMemory(
@@ -19,36 +21,31 @@ func (idx *AnnoyIndexImpl[TV, TR]) Get_nns_by_item(
 		idx.vectorLength,
 	)
 
-	return idx.Get_all_nns(
+	return idx.GetNnsByVector(
 		node.GetVector(idx.vectorLength),
-		n,
-		search_k,
+		numReturn,
+		numNodesToInspect,
 	)
 }
 
-func (idx *AnnoyIndexImpl[TV, TR]) Get_nns_by_vector(
+// GetAllNns will search for the closest vectors to the given _vector_. When
+// _numReturn_ is -1, it will search number of trees in index * _numReturn_.
+func (idx *AnnoyIndexImpl[TV, TR]) GetNnsByVector(
 	vector []TV,
-	n, search_k int,
-) (result []int, distances []TV) {
-	return idx.Get_all_nns(vector, n, search_k)
-}
-
-func (idx *AnnoyIndexImpl[TV, TR]) Get_all_nns(
-	vector []TV,
-	n, search_k int,
+	numReturn, numNodesToInspect int,
 ) (result []int, distances []TV) {
 	q := utils.NewPriorityQueue[TV, int]()
 
-	if search_k == -1 {
-		search_k = len(idx._roots)
+	if numNodesToInspect == -1 {
+		numNodesToInspect = numReturn * len(idx._roots)
 	}
 
-	for i := range idx._roots[:search_k] {
+	for i := range idx._roots {
 		q.Push(idx.distance.PQInitialValue(), idx._roots[i])
 	}
 
 	nns := []int{}
-	for len(nns) < search_k && !q.Empty() {
+	for len(nns) < numNodesToInspect && !q.Empty() {
 		top := q.Top()
 
 		d := top.First
@@ -64,7 +61,8 @@ func (idx *AnnoyIndexImpl[TV, TR]) Get_all_nns(
 		} else if nDescendants < idx.maxDescendants {
 			dst := nd.GetChildren()
 			nns = append(nns, dst[:nDescendants]...)
-		} else {
+		} else /*nDescendants > idx.maxDescendants*/ {
+			// Node is normal of the split plane.
 			margin := idx.distance.Margin(nd, vector, idx.vectorLength)
 			children := nd.GetChildren()
 
@@ -118,8 +116,8 @@ func (idx *AnnoyIndexImpl[TV, TR]) Get_all_nns(
 
 	m := len(nns_dist)
 	var p int
-	if n < m {
-		p = n
+	if numReturn < m {
+		p = numReturn
 	} else {
 		p = m
 	}
