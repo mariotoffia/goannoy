@@ -2,6 +2,7 @@ package distance
 
 import (
 	"github.com/mariotoffia/goannoy/interfaces"
+	"github.com/mariotoffia/goannoy/utils"
 	"github.com/mariotoffia/goannoy/vector"
 )
 
@@ -18,8 +19,10 @@ func TwoMeans[TV interfaces.VectorType, TR interfaces.RandomTypes](
 	vectorLength int,
 	random interfaces.Random[TR],
 	cosine bool,
-	p, q interfaces.Node[TV]) {
-	//
+	p, q interfaces.Node[TV],
+	distance interfaces.Distance[TV, TR],
+) {
+
 	const iterationSteps = 200
 
 	nodeCount := uint32(len(nodes))
@@ -31,16 +34,16 @@ func TwoMeans[TV interfaces.VectorType, TR interfaces.RandomTypes](
 		j++ // ensure that i != j
 	}
 
-	nodes[i].CopyNodeTo(p, vectorLength)
-	nodes[j].CopyNodeTo(q, vectorLength)
+	utils.CopyNode(p, nodes[i], vectorLength)
+	utils.CopyNode(q, nodes[j], vectorLength)
 
 	if cosine {
-		p.Normalize(vectorLength)
-		q.Normalize(vectorLength)
+		distance.Normalize(p)
+		distance.Normalize(q)
 	}
 
-	p.InitNode(vectorLength)
-	p.InitNode(vectorLength)
+	distance.InitNode(p)
+	distance.InitNode(q)
 
 	pvec := p.GetVector(vectorLength)
 	qvec := q.GetVector(vectorLength)
@@ -49,19 +52,19 @@ func TwoMeans[TV interfaces.VectorType, TR interfaces.RandomTypes](
 	for l := 0; l < iterationSteps; l++ {
 		k := random.NextIndex(TR(nodeCount))
 
-		di := ic * float64(p.Distance(nodes[k], vectorLength))
-		dj := jc * float64(q.Distance(nodes[k], vectorLength))
+		di := ic * float64(distance.Distance(p, nodes[k]))
+		dj := jc * float64(distance.Distance(q, nodes[k]))
 
 		var norm TV
 
 		vec := nodes[k].GetVector(vectorLength)
+
 		if cosine {
 			norm = vector.GetNorm(vec, vectorLength)
 
 			if !(norm > 0) {
 				continue
 			}
-
 		} else {
 			norm = 1
 		}
@@ -71,7 +74,7 @@ func TwoMeans[TV interfaces.VectorType, TR interfaces.RandomTypes](
 				pvec[z] = (pvec[z]*TV(ic) + vec[z]/norm) / TV(ic+1)
 			}
 
-			p.InitNode(vectorLength)
+			distance.InitNode(p)
 			ic++
 
 		} else if dj < di {
@@ -79,7 +82,7 @@ func TwoMeans[TV interfaces.VectorType, TR interfaces.RandomTypes](
 				qvec[z] = (qvec[z]*TV(jc) + vec[z]/norm) / TV(jc+1)
 			}
 
-			q.InitNode(vectorLength)
+			distance.InitNode(q)
 			jc++
 		}
 	}

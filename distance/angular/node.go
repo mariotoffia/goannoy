@@ -1,11 +1,9 @@
 package angular
 
 import (
-	"math"
 	"unsafe"
 
 	"github.com/mariotoffia/goannoy/interfaces"
-	"github.com/mariotoffia/goannoy/vector"
 )
 
 // AngularNodeImpl is the node implementation for the angular distance.
@@ -42,11 +40,6 @@ type AngularNodeImpl[TV interfaces.VectorType] struct {
 	v        [0]TV
 }
 
-func (n *AngularNodeImpl[TV]) Size(vectorLength int) int {
-	// _s = offsetof(Node, v) + _f * sizeof(T); // Size of each node
-	return int(unsafe.Offsetof(n.v) + (uintptr(vectorLength) * unsafe.Sizeof(TV(0))))
-}
-
 func (n *AngularNodeImpl[TV]) GetRawVector() *TV {
 	return (*TV)(unsafe.Pointer(&n.v))
 }
@@ -60,7 +53,7 @@ func (n *AngularNodeImpl[TV]) SetVector(v []TV) {
 	src := unsafe.Pointer(unsafe.SliceData(v))
 	size := uintptr(len(v)) * unsafe.Sizeof(TV(0))
 
-	copy((*[1 << 31]byte)(dst)[:size], (*[1 << 31]byte)(src)[:size])
+	copy((*[1 << 30]byte)(dst)[:size], (*[1 << 30]byte)(src)[:size])
 }
 
 func (n *AngularNodeImpl[TV]) GetRawChildren() *int {
@@ -80,7 +73,7 @@ func (n *AngularNodeImpl[TV]) SetChildren(children []int) {
 	src := unsafe.Pointer(unsafe.SliceData(children))
 	size := uintptr(len(children)) * unsafe.Sizeof(int(0))
 
-	copy((*[1 << 31]byte)(dst)[:size], (*[1 << 31]byte)(src)[:size])
+	copy((*[1 << 30]byte)(dst)[:size], (*[1 << 30]byte)(src)[:size])
 }
 
 func (n *AngularNodeImpl[TV]) GetNumberOfDescendants() int {
@@ -91,65 +84,10 @@ func (n *AngularNodeImpl[TV]) SetNumberOfDescendants(nDescendants int) {
 	n.n_descendants = nDescendants
 }
 
-func (n *AngularNodeImpl[TV]) IsDataPoint() bool {
-	return n.n_descendants == 1
+func (n *AngularNodeImpl[TV]) GetNorm() TV {
+	return *(*TV)(unsafe.Pointer(&n.children))
 }
 
-func (n *AngularNodeImpl[TV]) Normalize(vectorLength int) {
-	raw := n.GetRawVector()
-	norm := TV(vector.GetNormUnsafe(raw, vectorLength))
-
-	if norm > 0 {
-		ptr := unsafe.Pointer(raw)
-		size := int(unsafe.Sizeof(TV(0)))
-
-		for i := 0; i < vectorLength; i++ {
-			f := (*TV)(unsafe.Pointer(unsafe.Add(ptr, i*size)))
-			*f /= norm
-		}
-	}
-}
-
-// InitNode will initialize the node by setting the norm to
-// the value based on the distance type.
-func (n *AngularNodeImpl[TV]) InitNode(vectorLength int) {
-	// write norm to the children array address
-	norm := (*TV)(unsafe.Pointer(&n.children))
-	*norm = vector.DotUnsafe(n.GetRawVector(), n.GetRawVector(), vectorLength)
-}
-
-func (n *AngularNodeImpl[TV]) CopyNodeTo(dst interfaces.Node[TV], vectorLength int) {
-	dstPtr := unsafe.Pointer(dst.(*AngularNodeImpl[TV]))
-	srcPtr := unsafe.Pointer(n)
-	size := n.Size(vectorLength)
-
-	// Copy data from the input slice to the underlying memory
-	copy((*[1 << 30]byte)(dstPtr)[:size], (*[1 << 30]byte)(srcPtr)[:size])
-}
-
-func (x *AngularNodeImpl[TV]) MaxNumChildren(vectorLength int) int {
-	// _K = (S) (((size_t) (_s - offsetof(Node, children))) / sizeof(S));
-	return int((uintptr(x.Size(vectorLength)) - unsafe.Offsetof(x.children)) / unsafe.Sizeof(x.children[0]))
-}
-
-func (x *AngularNodeImpl[TV]) Distance(to interfaces.Node[TV], vectorLength int) TV {
-	t := to.(*AngularNodeImpl[TV])
-	pp := *(*TV)(unsafe.Pointer(&x.children))
-	qq := *(*TV)(unsafe.Pointer(&t.children))
-
-	if pp == 0 {
-		pp = vector.DotUnsafe(x.GetRawVector(), x.GetRawVector(), vectorLength)
-	}
-
-	if qq == 0 {
-		qq = vector.DotUnsafe(t.GetRawVector(), t.GetRawVector(), vectorLength)
-	}
-
-	pq := vector.DotUnsafe(x.GetRawVector(), t.GetRawVector(), vectorLength)
-	ppqq := pp * qq
-
-	if ppqq > 0 {
-		return 2.0 - 2.0*pq/TV(math.Sqrt(float64(ppqq)))
-	}
-	return 2.0
+func (n *AngularNodeImpl[TV]) SetNorm(norm TV) {
+	*(*TV)(unsafe.Pointer(&n.children)) = norm
 }

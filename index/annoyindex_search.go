@@ -18,7 +18,6 @@ func (idx *AnnoyIndexImpl[TV, TR]) GetNnsByItem(
 	node := idx.distance.MapNodeToMemory(
 		idx._nodes,
 		item,
-		idx.vectorLength,
 	)
 
 	return idx.GetNnsByVector(
@@ -50,7 +49,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) GetNnsByVector(
 
 		d := top.First
 		i := top.Second
-		nd := idx.distance.MapNodeToMemory(idx._nodes, i, idx.vectorLength)
+		nd := idx.distance.MapNodeToMemory(idx._nodes, i)
 
 		q.Pop()
 
@@ -63,7 +62,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) GetNnsByVector(
 			nns = append(nns, dst[:nDescendants]...)
 		} else /*nDescendants > idx.maxDescendants*/ {
 			// Node is normal of the split plane.
-			margin := idx.distance.Margin(nd, vector, idx.vectorLength)
+			margin := idx.distance.Margin(nd, vector)
 			children := nd.GetChildren()
 
 			q.Push(
@@ -87,10 +86,9 @@ func (idx *AnnoyIndexImpl[TV, TR]) GetNnsByVector(
 	v_node := idx.distance.MapNodeToMemory(
 		unsafe.Pointer(unsafe.SliceData(mem)),
 		0,
-		idx.vectorLength,
 	)
 
-	v_node.InitNode(idx.vectorLength)
+	idx.distance.InitNode(v_node)
 
 	nns_dist := []utils.Pair[TV, int]{}
 	last := -1
@@ -102,13 +100,13 @@ func (idx *AnnoyIndexImpl[TV, TR]) GetNnsByVector(
 		}
 
 		last = j
-		n := idx.distance.MapNodeToMemory(idx._nodes, j, idx.vectorLength)
+		n := idx.distance.MapNodeToMemory(idx._nodes, j)
 
 		if n.GetNumberOfDescendants() == 1 { // This is only to guard a really obscure case, #284
-			jn := idx.distance.MapNodeToMemory(idx._nodes, j, idx.vectorLength)
+			jn := idx.distance.MapNodeToMemory(idx._nodes, j)
 
 			nns_dist = append(nns_dist, utils.Pair[TV, int]{
-				First:  v_node.Distance(jn, idx.vectorLength),
+				First:  idx.distance.Distance(v_node, jn),
 				Second: j,
 			})
 		}

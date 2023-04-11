@@ -28,19 +28,6 @@ type Node[TV VectorType] interface {
 	SetChildren(children []int)
 	GetNumberOfDescendants() int
 	SetNumberOfDescendants(n int)
-	// Normalize will normalize the vector
-	Normalize(vectorLength int)
-	// CopyNodeTo will copy this Node contents to dst Node
-	CopyNodeTo(dst Node[TV], vectorLength int)
-	// InitNode will initialize the node. Depending on the implementation
-	// it will do different things.
-	InitNode(vectorLength int)
-	// Distance calculates the distance from this to the _to_ `Node`.
-	Distance(to Node[TV], vectorLength int) TV
-	IsDataPoint() bool
-	// Size returns the size of the node implementation in bytes.
-	Size(vectorLength int) int
-	// MaxNumChildren is the max number of descendants to fit into node by overwriting
-	// the vector space.
-	MaxNumChildren(vectorLength int) int
+	GetNorm() TV
+	SetNorm(norm TV)
 }

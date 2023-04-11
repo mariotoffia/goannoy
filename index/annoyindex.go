@@ -52,15 +52,12 @@ func NewAnnoyIndexImpl[
 	allocator interfaces.Allocator,
 	indexMemoryAllocator interfaces.IndexMemoryAllocator,
 ) *AnnoyIndexImpl[TV, TR] {
-	// Create a single node to query it for sizes
-	node := distance.PrototypeNode(vectorLength)
-
 	index := &AnnoyIndexImpl[TV, TR]{
-		vectorLength:         vectorLength,                      // _f
-		random:               random,                            // _seed
-		nodeSize:             node.Size(vectorLength),           // _s
-		maxDescendants:       node.MaxNumChildren(vectorLength), // _K
-		indexBuilt:           false,                             // _built
+		vectorLength:         vectorLength,              // _f
+		random:               random,                    // _seed
+		nodeSize:             distance.NodeSize(),       // _s
+		maxDescendants:       distance.MaxNumChildren(), // _K
+		indexBuilt:           false,                     // _built
 		distance:             distance,
 		allocator:            allocator,
 		buildPolicy:          buildPolicy,
@@ -123,7 +120,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) AddItem(itemIndex int, v []TV) {
 	// Initialize the node with the vector
 	node.SetNumberOfDescendants(1)
 	node.SetVector(v)
-	node.InitNode(idx.vectorLength)
+	idx.distance.InitNode(node)
 
 	// Is new spot?
 	if itemIndex >= idx._n_items {
@@ -152,7 +149,6 @@ func (idx *AnnoyIndexImpl[TV, TR]) Build(numberOfTrees, numWorkers int) {
 	idx.distance.PreProcess(
 		idx._nodes,
 		idx._n_items,
-		idx.vectorLength,
 	)
 
 	idx._n_nodes = idx._n_items
@@ -167,10 +163,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) Build(numberOfTrees, numWorkers int) {
 		dst := idx.getNode(idx._n_nodes + i)
 		src := idx.getNode(idx._roots[i])
 
-		src.CopyNodeTo(
-			dst,
-			idx.vectorLength,
-		)
+		utils.CopyNode(dst, src, idx.vectorLength)
 
 		fmt.Println(src.GetChildren())
 	}
@@ -231,7 +224,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) ThreadBuild(
 }
 
 func (idx *AnnoyIndexImpl[TV, TR]) getNode(index int) interfaces.Node[TV] {
-	return idx.distance.MapNodeToMemory(idx._nodes, index, idx.vectorLength)
+	return idx.distance.MapNodeToMemory(idx._nodes, index)
 }
 
 func (idx *AnnoyIndexImpl[TV, TR]) makeTree(
@@ -290,19 +283,14 @@ func (idx *AnnoyIndexImpl[TV, TR]) makeTree(
 	data := make([]byte, idx.nodeSize) // Need it since, gc won't remove it until scope end
 
 	m := idx.distance.MapNodeToMemory(
-		unsafe.Pointer(unsafe.SliceData(data)), 0, idx.vectorLength,
+		unsafe.Pointer(unsafe.SliceData(data)), 0,
 	)
 
 	for attempt := 0; attempt < 3; attempt++ {
 		children_indices[0] = nil
 		children_indices[1] = nil
 
-		idx.distance.CreateSplit(
-			children,
-			idx.vectorLength,
-			idx.nodeSize,
-			idx.random, m,
-		)
+		idx.distance.CreateSplit(children, idx.nodeSize, idx.random, m)
 
 		for _, j := range indices {
 			// TODO: original code did a check: Node* n = _get(j); if (n) {...}
@@ -312,7 +300,6 @@ func (idx *AnnoyIndexImpl[TV, TR]) makeTree(
 				m,
 				n.GetVector(idx.vectorLength),
 				idx.random,
-				idx.vectorLength,
 			)
 
 			children_indices[side] = append(children_indices[side], j)
@@ -382,7 +369,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) makeTree(
 	idx.buildPolicy.LockSharedNodes()
 	dst := idx.getNode(item)
 
-	m.CopyNodeTo(dst, idx.vectorLength)
+	utils.CopyNode(dst, m, idx.vectorLength)
 	idx.buildPolicy.UnlockSharedNodes()
 
 	return item
