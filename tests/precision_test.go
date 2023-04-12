@@ -21,7 +21,7 @@ func TestPrecision(t *testing.T) {
 
 	defer allocator.Free()
 
-	numItems := 1000000 //1000000
+	numItems := 10000 //1000000
 	vectorLength := 40
 	randomVectorContents := true
 	multiplier := 2
@@ -60,21 +60,34 @@ func TestPrecision(t *testing.T) {
 		idx.AddItem(i, v)
 	}
 
-	fmt.Printf("Building index num_trees = %d * vectorLength (%d) ...\n", multiplier, 2*vectorLength)
-	idx.Build(multiplier*vectorLength, -1)
-	fmt.Println("Done building index")
+	// output resulting metrics to file results.txt
+	f, err := os.Create("results.txt")
+	require.NoError(t, err)
 
-	fmt.Println("Saving index ...")
+	defer f.Close()
+
+	f.WriteString(
+		fmt.Sprintf(
+			"numItems: %d, vectorLength: %d, multiplier: %d, randomVectorContents: %t\n",
+			numItems, vectorLength, multiplier, randomVectorContents),
+	)
+
+	dur := utils.Measure(func() {
+		idx.Build(multiplier*vectorLength, -1)
+	})
+
+	f.WriteString(fmt.Sprintf("build time: %d ms\n", dur.Milliseconds()))
+	f.WriteString(fmt.Sprintln("Saving index ..."))
 
 	defer os.Remove("test.ann")
 
-	dur, err := utils.MeasureWithReturn(func() error {
+	dur, err = utils.MeasureWithReturn(func() error {
 		return idx.Save("test.ann")
 	})
 
 	require.NoError(t, err)
 
-	fmt.Printf("Done in %d ms\n", dur.Milliseconds())
+	f.WriteString(fmt.Sprintf("Saved in %d ms\n", dur.Milliseconds()))
 
 	for i := 0; i < numItems; i++ {
 		v := vectors[i]
@@ -104,12 +117,6 @@ func TestPrecision(t *testing.T) {
 		prec_sum[limit] = 0.0
 		time_sum[limit] = 0.0
 	}
-
-	// output resulting metrics to file results.txt
-	f, err := os.Create("results.txt")
-	require.NoError(t, err)
-
-	defer f.Close()
 
 	// doing the work
 	for i := 0; i < prec_n; i++ {

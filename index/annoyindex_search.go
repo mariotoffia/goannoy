@@ -58,7 +58,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) GetNnsByVector(
 
 		if nDescendants == 1 && i < idx._n_items {
 			nns = append(nns, i)
-		} else if nDescendants < idx.maxDescendants {
+		} else if nDescendants <= idx.maxDescendants {
 			dst := nd.GetChildren()
 			nns = append(nns, dst[:nDescendants]...)
 		} else /*nDescendants > idx.maxDescendants*/ {
@@ -80,7 +80,6 @@ func (idx *AnnoyIndexImpl[TV, TR]) GetNnsByVector(
 
 	// Get distances for all items
 	// To avoid calculating distance multiple times for any items, sort by id
-	//sorty.Sort(len(nns), utils.LswInts(nns))
 	sorty.SortSlice(nns)
 
 	mem := make([]byte, idx.nodeSize) // Allocate mem on gcheap
