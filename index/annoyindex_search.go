@@ -4,6 +4,7 @@ import (
 	"sort"
 	"unsafe"
 
+	"github.com/jfcg/sorty/v2"
 	"github.com/mariotoffia/goannoy/interfaces"
 	"github.com/mariotoffia/goannoy/utils"
 )
@@ -79,7 +80,8 @@ func (idx *AnnoyIndexImpl[TV, TR]) GetNnsByVector(
 
 	// Get distances for all items
 	// To avoid calculating distance multiple times for any items, sort by id
-	sort.Ints(nns)
+	//sorty.Sort(len(nns), utils.LswInts(nns))
+	sorty.SortSlice(nns)
 
 	mem := make([]byte, idx.nodeSize) // Allocate mem on gcheap
 
@@ -121,7 +123,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) GetNnsByVector(
 	}
 
 	// Inefficient since it will sort the whole slice!
-	sort.SliceStable(nns_dist, func(i, j int) bool {
+	sort.Slice(nns_dist, func(i, j int) bool {
 		return nns_dist[i].Less(&nns_dist[j])
 	})
 

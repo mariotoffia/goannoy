@@ -1,6 +1,8 @@
 package utils
 
-import "sort"
+import (
+	"github.com/jfcg/sorty/v2"
+)
 
 func Max(a, b int) int {
 	if a > b {
@@ -10,8 +12,8 @@ func Max(a, b int) int {
 }
 
 func Intersection(a, b []int) []int {
-	sort.Ints(a)
-	sort.Ints(b)
+	sorty.SortSlice(a)
+	sorty.SortSlice(b)
 
 	maxSize := len(a)
 

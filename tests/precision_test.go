@@ -21,7 +21,7 @@ func TestPrecision(t *testing.T) {
 
 	defer allocator.Free()
 
-	numItems := 1000000
+	numItems := 1000000 //1000000
 	vectorLength := 40
 	randomVectorContents := true
 	multiplier := 2
@@ -30,7 +30,7 @@ func TestPrecision(t *testing.T) {
 		vectorLength,
 		rnd,
 		angular.Distance[float64, uint32](vectorLength),
-		policy.Single(),
+		policy.Multi(),
 		allocator,
 		memory.MmapIndexAllocator(),
 		false, /*verbose*/
@@ -88,7 +88,11 @@ func TestPrecision(t *testing.T) {
 		}
 	}
 
-	limits := []int{1, 10, 100, 1000, 10000, 100000, 1000000}
+	var limits []int
+	for i := 1; i <= numItems; i *= 10 {
+		limits = append(limits, i)
+	}
+
 	numReturn := 10
 	prec_n := 1000
 	prec_sum := make(map[int]float64)
