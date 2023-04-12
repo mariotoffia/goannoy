@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// https://github.com/erikbern/ann-benchmarks
+
 func TestPrecision(t *testing.T) {
 	rnd := random.NewKiss32Random(uint32(0) /*default seed*/)
 	allocator := memory.NewBuildIndexMemoryArenaAllocator()
@@ -135,7 +137,7 @@ func TestPrecision(t *testing.T) {
 				return c
 			})
 
-			time_sum[limit] += float64(dur.Milliseconds())
+			time_sum[limit] += float64(dur.Microseconds())
 
 			// intersecting results
 			found := len(util.Intersection(closest, topList))
@@ -149,7 +151,7 @@ func TestPrecision(t *testing.T) {
 		time := time_sum[limit] / float64(prec_n)
 
 		f.WriteString(
-			fmt.Sprintf("limit = %d, precision = %f, time = %f ms\n", limit, prec, time),
+			fmt.Sprintf("limit = %d, precision = %f, time = %f us\n", limit, prec, time),
 		)
 	}
 }
