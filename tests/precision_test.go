@@ -21,16 +21,19 @@ func TestPrecision(t *testing.T) {
 
 	defer allocator.Free()
 
-	numItems := 100
+	numItems := 1000000
 	vectorLength := 40
+	randomVectorContents := true
+	multiplier := 2
 
 	idx := index.NewAnnoyIndexImpl[float64, uint32](
 		vectorLength,
 		rnd,
-		&angular.AngularDistanceImpl[float64, uint32]{},
-		policy.Multi(),
+		angular.Distance[float64, uint32](vectorLength),
+		policy.Single(),
 		allocator,
 		memory.MmapIndexAllocator(),
+		false, /*verbose*/
 	)
 
 	defer idx.Close()
@@ -40,7 +43,11 @@ func TestPrecision(t *testing.T) {
 	createVector := func() []float64 {
 		vec := make([]float64, vectorLength)
 		for z := 0; z < vectorLength; z++ {
-			vec[z] = vec_rnd.NormFloat64()
+			if randomVectorContents {
+				vec[z] = vec_rnd.NormFloat64()
+			} else {
+				vec[z] = float64(z + 1)
+			}
 		}
 
 		return vec
@@ -53,8 +60,8 @@ func TestPrecision(t *testing.T) {
 		idx.AddItem(i, v)
 	}
 
-	fmt.Printf("Building index num_trees = 2 * vectorLength (%d) ...\n", 2*vectorLength)
-	idx.Build(2*vectorLength, -1)
+	fmt.Printf("Building index num_trees = %d * vectorLength (%d) ...\n", multiplier, 2*vectorLength)
+	idx.Build(multiplier*vectorLength, -1)
 	fmt.Println("Done building index")
 
 	fmt.Println("Saving index ...")
@@ -94,12 +101,18 @@ func TestPrecision(t *testing.T) {
 		time_sum[limit] = 0.0
 	}
 
+	// output resulting metrics to file results.txt
+	f, err := os.Create("results.txt")
+	require.NoError(t, err)
+
+	defer f.Close()
+
 	// doing the work
 	for i := 0; i < prec_n; i++ {
 		// select a random node
 		j := int(rnd.NextIndex(uint32(numItems)))
 
-		fmt.Println("finding nbs for ", j)
+		f.WriteString(fmt.Sprintf("finding nbs for %d\n", j))
 
 		// getting the K closest
 		closest, _ = idx.GetNnsByItem(j, numReturn, numItems)
@@ -120,10 +133,12 @@ func TestPrecision(t *testing.T) {
 		}
 	}
 
-	// printing resulting metrics
 	for _, limit := range limits {
 		prec := prec_sum[limit] / float64(prec_n)
 		time := time_sum[limit] / float64(prec_n)
-		fmt.Printf("limit = %d, precision = %f, time = %f ms\n", limit, prec, time)
+
+		f.WriteString(
+			fmt.Sprintf("limit = %d, precision = %f, time = %f ms\n", limit, prec, time),
+		)
 	}
 }

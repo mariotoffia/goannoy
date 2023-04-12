@@ -26,11 +26,14 @@ type AnnoyIndexImpl[
 	// nodeSize the the complete size of the node in bytes.
 	nodeSize int
 	// _n_items is how many nodes exists in the index.
-	_n_items             int
-	_nodes               unsafe.Pointer
-	_n_nodes             int
+	_n_items int
+	_nodes   unsafe.Pointer
+	_n_nodes int
+	// _nodes_size is the number of nodes that has been allocated.
+	// Total size is _node_size * nodeSize
 	_nodes_size          int
 	_roots               []int
+	logVerbose           bool
 	maxDescendants       int
 	random               interfaces.Random[TR]
 	indexLoaded          bool
@@ -51,6 +54,7 @@ func NewAnnoyIndexImpl[
 	buildPolicy interfaces.AnnoyIndexBuildPolicy,
 	allocator interfaces.Allocator,
 	indexMemoryAllocator interfaces.IndexMemoryAllocator,
+	logVerbose bool,
 ) *AnnoyIndexImpl[TV, TR] {
 	index := &AnnoyIndexImpl[TV, TR]{
 		vectorLength:         vectorLength,              // _f
@@ -58,6 +62,7 @@ func NewAnnoyIndexImpl[
 		nodeSize:             distance.NodeSize(),       // _s
 		maxDescendants:       distance.MaxNumChildren(), // _K
 		indexBuilt:           false,                     // _built
+		logVerbose:           logVerbose,                // _verbose
 		distance:             distance,
 		allocator:            allocator,
 		buildPolicy:          buildPolicy,
@@ -126,6 +131,12 @@ func (idx *AnnoyIndexImpl[TV, TR]) AddItem(itemIndex int, v []TV) {
 	if itemIndex >= idx._n_items {
 		idx._n_items = itemIndex + 1
 	}
+
+	if idx.logVerbose {
+		fmt.Printf(
+			"added itemIndex:%d node - %s\n", itemIndex, utils.DumpNode(idx.distance, node),
+		)
+	}
 }
 
 // Build will build a a new index. The _numberOfTrees_ is the number of trees
@@ -146,10 +157,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) Build(numberOfTrees, numWorkers int) {
 	}
 
 	// Give the preprocessor a chance to process the nodes before building the index
-	idx.distance.PreProcess(
-		idx._nodes,
-		idx._n_items,
-	)
+	idx.distance.PreProcess(idx._nodes, idx._n_items)
 
 	idx._n_nodes = idx._n_items
 
@@ -165,7 +173,11 @@ func (idx *AnnoyIndexImpl[TV, TR]) Build(numberOfTrees, numWorkers int) {
 
 		utils.CopyNode(dst, src, idx.vectorLength)
 
-		fmt.Println(src.GetChildren())
+		if idx.logVerbose {
+			fmt.Printf(
+				"added roots[i=%d]:%d node - %s\n", i, idx._roots[i], utils.DumpNode(idx.distance, dst),
+			)
+		}
 	}
 
 	idx._n_nodes += len(idx._roots)
@@ -232,7 +244,14 @@ func (idx *AnnoyIndexImpl[TV, TR]) makeTree(
 	rnd interfaces.Random[TR],
 	threadedBuildPolicy interfaces.AnnoyIndexBuildPolicy,
 ) int {
-
+	// The basic rule is that if we have <= maxDescendants items, then it's a leaf node, otherwise it's a split node.
+	// There's some regrettable complications caused by the problem that root nodes have to be "special":
+	// 1. We identify root nodes by the arguable logic that _n_items == n->n_descendants,
+	//    regardless of how many descendants they actually have
+	//
+	// 2. Root nodes with only 1 child need to be a "dummy" parent
+	//
+	// 3. Due to the _n_items "hack", we need to be careful with the cases where _n_items <= _K or _n_items > _K
 	if len(indices) == 1 && !isRoot {
 		return indices[0]
 	}
@@ -265,6 +284,10 @@ func (idx *AnnoyIndexImpl[TV, TR]) makeTree(
 		}
 
 		threadedBuildPolicy.UnlockSharedNodes()
+
+		if idx.logVerbose {
+			fmt.Printf("added 1:node[item=%d] - %s\n", item, utils.DumpNode(idx.distance, m))
+		}
 
 		return item
 	}
@@ -316,7 +339,9 @@ func (idx *AnnoyIndexImpl[TV, TR]) makeTree(
 
 	// If we didn't find a hyperplane, just randomize sides as a last option
 	for {
-		if idx.splitImbalance(children_indices[0], children_indices[1]) <= 0.99 {
+		if idx.splitImbalance(
+			children_indices[interfaces.SideLeft],
+			children_indices[interfaces.SideRight]) <= 0.99 {
 			break
 		}
 
@@ -372,6 +397,10 @@ func (idx *AnnoyIndexImpl[TV, TR]) makeTree(
 	utils.CopyNode(dst, m, idx.vectorLength)
 	idx.buildPolicy.UnlockSharedNodes()
 
+	if idx.logVerbose {
+		fmt.Printf("added 2:node[item=%d] - %s\n", item, utils.DumpNode(idx.distance, dst))
+	}
+
 	return item
 }
 
@@ -385,18 +414,18 @@ func (idx *AnnoyIndexImpl[TV, TR]) splitImbalance(
 }
 
 func (idx *AnnoyIndexImpl[TV, TR]) allocateSize(
-	size int,
+	numNodes int,
 	threadedBuildPolicy interfaces.AnnoyIndexBuildPolicy,
 ) {
 	const reallocation_factor = float64(1.3)
 
-	if size > idx._nodes_size {
+	if numNodes > idx._nodes_size {
 
 		if threadedBuildPolicy != nil {
 			threadedBuildPolicy.LockNodes()
 		}
 
-		new_node_size := utils.Max(size, int(float64(idx._nodes_size+1)*reallocation_factor))
+		new_node_size := utils.Max(numNodes, int(float64(idx._nodes_size+1)*reallocation_factor))
 		idx._nodes = idx.allocator.Reallocate(new_node_size * idx.nodeSize)
 		idx._nodes_size = new_node_size
 

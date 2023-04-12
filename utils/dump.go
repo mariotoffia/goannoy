@@ -24,7 +24,8 @@ func DumpNode[TV interfaces.VectorType, TR interfaces.RandomTypes](
 		return fmt.Sprintf("InternalNode - children: %v", children)
 	}
 
-	// the vector is the normal of the split plane.
-	//   Thus, the "T norm" is extracted from the children array address.??
-	return "TODO: Fix normal of the split plane."
+	norm := node.GetNorm()
+	vec := node.GetVector(distance.VectorLength())
+
+	return fmt.Sprintf("SplitNode - norm: %v, vector: %v", norm, vec)
 }

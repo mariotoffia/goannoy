@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"unsafe"
+
+	"github.com/mariotoffia/goannoy/utils"
 )
 
 func (idx *AnnoyIndexImpl[TV, TR]) Save(fileName string) error {
@@ -17,6 +19,14 @@ func (idx *AnnoyIndexImpl[TV, TR]) Save(fileName string) error {
 	}
 
 	defer file.Close()
+
+	if idx.logVerbose {
+		fmt.Println("Saving index to file", fileName, "with", idx._n_nodes, "nodes")
+		for i := 0; i < idx._n_nodes; i++ {
+			n := idx.getNode(i)
+			fmt.Println(utils.DumpNode(idx.distance, n))
+		}
+	}
 
 	data := unsafe.Slice((*byte)(idx._nodes), idx._n_nodes*idx.nodeSize)
 
@@ -53,7 +63,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) Load(fileName string) error {
 
 	m := -1
 
-	for i := idx._n_nodes - 1; i >= 0; i++ {
+	for i := idx._n_nodes - 1; i >= 0; i-- {
 
 		n := idx.getNode(i)
 		k := n.GetNumberOfDescendants()
@@ -79,6 +89,15 @@ func (idx *AnnoyIndexImpl[TV, TR]) Load(fileName string) error {
 	idx.indexBuilt = true
 	idx.indexLoaded = true
 	idx._n_items = m
+
+	if idx.logVerbose {
+		fmt.Println("Loaded index to from file", fileName, "with", idx._n_nodes, "nodes")
+
+		for i := 0; i < idx._n_nodes; i++ {
+			n := idx.getNode(i)
+			fmt.Println(utils.DumpNode(idx.distance, n))
+		}
+	}
 
 	return nil
 }
