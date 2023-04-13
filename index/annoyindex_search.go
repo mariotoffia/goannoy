@@ -4,17 +4,16 @@ import (
 	"sort"
 	"unsafe"
 
-	"github.com/jfcg/sorty/v2"
 	"github.com/mariotoffia/goannoy/interfaces"
 	"github.com/mariotoffia/goannoy/utils"
 )
 
 // GetNnsByItem will search for the closest vectors to the given _item_ in the index. When
 // _numReturn_ is -1, it will search number of trees in index * _numReturn_.
-func (idx *AnnoyIndexImpl[TV, TR]) GetNnsByItem(
-	item int,
+func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByItem(
+	item TIX,
 	numReturn, numNodesToInspect int,
-) (result []int, distances []TV) {
+) (result []TIX, distances []TV) {
 
 	node := idx.distance.MapNodeToMemory(
 		idx._nodes,
@@ -30,11 +29,11 @@ func (idx *AnnoyIndexImpl[TV, TR]) GetNnsByItem(
 
 // GetAllNns will search for the closest vectors to the given _vector_. When
 // _numReturn_ is -1, it will search number of trees in index * _numReturn_.
-func (idx *AnnoyIndexImpl[TV, TR]) GetNnsByVector(
+func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 	vector []TV,
 	numReturn, numNodesToInspect int,
-) (result []int, distances []TV) {
-	q := utils.NewPriorityQueue[TV, int]()
+) (result []TIX, distances []TV) {
+	q := utils.NewPriorityQueue[TV, TIX]()
 
 	if numNodesToInspect == -1 {
 		numNodesToInspect = numReturn * len(idx._roots)
@@ -44,7 +43,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) GetNnsByVector(
 		q.Push(idx.distance.PQInitialValue(), idx._roots[i])
 	}
 
-	nns := []int{}
+	nns := []TIX{}
 	for len(nns) < numNodesToInspect && !q.Empty() {
 		top := q.Top()
 
@@ -80,7 +79,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) GetNnsByVector(
 
 	// Get distances for all items
 	// To avoid calculating distance multiple times for any items, sort by id
-	sorty.SortSlice(nns)
+	utils.SortSlice(nns)
 
 	mem := make([]byte, idx.nodeSize) // Allocate mem on gcheap
 
@@ -91,12 +90,16 @@ func (idx *AnnoyIndexImpl[TV, TR]) GetNnsByVector(
 
 	idx.distance.InitNode(v_node)
 
-	nns_dist := []utils.Pair[TV, int]{}
-	last := -1
+	nns_dist := []utils.Pair[TV, TIX]{}
+
+	var (
+		lastset bool
+		last    TIX
+	)
 
 	for i := 0; i < len(nns); i++ {
 		j := nns[i]
-		if j == last {
+		if lastset && j == last {
 			continue
 		}
 
@@ -106,7 +109,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) GetNnsByVector(
 		if n.GetNumberOfDescendants() == 1 { // This is only to guard a really obscure case, #284
 			jn := idx.distance.MapNodeToMemory(idx._nodes, j)
 
-			nns_dist = append(nns_dist, utils.Pair[TV, int]{
+			nns_dist = append(nns_dist, utils.Pair[TV, TIX]{
 				First:  idx.distance.Distance(v_node, jn),
 				Second: j,
 			})

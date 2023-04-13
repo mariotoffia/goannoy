@@ -6,9 +6,9 @@ import (
 	"github.com/mariotoffia/goannoy/interfaces"
 )
 
-func DumpNode[TV interfaces.VectorType, TR interfaces.RandomTypes](
-	distance interfaces.Distance[TV, TR],
-	node interfaces.Node[TV],
+func DumpNode[TV interfaces.VectorType, TIX interfaces.IndexTypes](
+	distance interfaces.Distance[TV, TIX],
+	node interfaces.Node[TV, TIX],
 ) string {
 	descendants := node.GetNumberOfDescendants()
 

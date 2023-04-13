@@ -1,10 +1,13 @@
 package interfaces
 
+type IndexTypes interface {
+	uint32 | uint64
+}
+
 type AnnoyIndex[
-	TIdx int,
+	TIX IndexTypes,
 	TV VectorType,
-	TRandType RandomTypes,
-	TRand Random[TRandType]] interface {
+	TRand Random[TIX]] interface {
 }
 
 type AnnoyIndexBuilder interface {

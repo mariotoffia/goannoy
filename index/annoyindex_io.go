@@ -8,7 +8,7 @@ import (
 	"github.com/mariotoffia/goannoy/utils"
 )
 
-func (idx *AnnoyIndexImpl[TV, TR]) Save(fileName string) error {
+func (idx *AnnoyIndexImpl[TV, TIX]) Save(fileName string) error {
 	if !idx.indexBuilt {
 		return fmt.Errorf("can't save an index that hasn't been built")
 	}
@@ -22,9 +22,9 @@ func (idx *AnnoyIndexImpl[TV, TR]) Save(fileName string) error {
 
 	if idx.logVerbose {
 		fmt.Println("Saving index to file", fileName, "with", idx._n_nodes, "nodes")
-		for i := 0; i < idx._n_nodes; i++ {
+		for i := TIX(0); i < idx._n_nodes; i++ {
 			n := idx.getNode(i)
-			fmt.Println(utils.DumpNode(idx.distance, n))
+			fmt.Println(i, ": ", utils.DumpNode(idx.distance, n))
 		}
 	}
 
@@ -39,7 +39,7 @@ func (idx *AnnoyIndexImpl[TV, TR]) Save(fileName string) error {
 	return idx.Load(fileName)
 }
 
-func (idx *AnnoyIndexImpl[TV, TR]) Load(fileName string) error {
+func (idx *AnnoyIndexImpl[TV, TIX]) Load(fileName string) error {
 	// Close any existing index and free resources
 	idx.Close()
 
@@ -59,18 +59,22 @@ func (idx *AnnoyIndexImpl[TV, TR]) Load(fileName string) error {
 
 	idx._nodes = idx.indexMemory.Ptr()
 	idx._roots = nil
-	idx._n_nodes = int(idx.indexMemory.Size()) / idx.nodeSize
+	idx._n_nodes = TIX(idx.indexMemory.Size()) / idx.nodeSize
 
-	m := -1
+	var (
+		mset bool
+		m    TIX
+	)
 
 	for i := idx._n_nodes - 1; i >= 0; i-- {
 
 		n := idx.getNode(i)
 		k := n.GetNumberOfDescendants()
 
-		if m == -1 || k == m {
+		if !mset || k == m {
 			idx._roots = append(idx._roots, i)
 			m = k
+			mset = true
 		} else {
 			break
 		}
@@ -93,9 +97,9 @@ func (idx *AnnoyIndexImpl[TV, TR]) Load(fileName string) error {
 	if idx.logVerbose {
 		fmt.Println("Loaded index to from file", fileName, "with", idx._n_nodes, "nodes")
 
-		for i := 0; i < idx._n_nodes; i++ {
+		for i := TIX(0); i < idx._n_nodes; i++ {
 			n := idx.getNode(i)
-			fmt.Println(utils.DumpNode(idx.distance, n))
+			fmt.Println(i, ": ", utils.DumpNode(idx.distance, n))
 		}
 	}
 

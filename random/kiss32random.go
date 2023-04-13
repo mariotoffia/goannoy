@@ -13,13 +13,13 @@ import "github.com/mariotoffia/goannoy/interfaces"
 // http://www0.cs.ucl.ac.uk/staff/d.jones/GoodPracticeRNG.pdf -> "Use a good RNG and build it into your code"
 // http://mathforum.org/kb/message.jspa?messageID=6627731
 // https://de.wikipedia.org/wiki/KISS_(Zufallszahlengenerator)
-type Kiss32Random[T interfaces.RandomTypes] struct {
+type Kiss32Random[T interfaces.IndexTypes] struct {
 	x, y, z, c, seed T
 }
 
 // NewKiss32Random creates a new random number generator based on the KISS
 // algorithm.
-func NewKiss32Random[T interfaces.RandomTypes](seed T) *Kiss32Random[T] {
+func NewKiss32Random[T interfaces.IndexTypes](seed T) *Kiss32Random[T] {
 	if seed == 0 {
 		seed = 123456789
 	}

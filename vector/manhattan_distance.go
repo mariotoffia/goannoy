@@ -1,8 +1,12 @@
 package vector
 
-func ManhattanDistance[T Calculable](a, b []T, vectorLength int) T {
+import "github.com/mariotoffia/goannoy/interfaces"
+
+func ManhattanDistance[T interfaces.VectorType, TIX interfaces.IndexTypes](
+	a, b []T, vectorLength TIX,
+) T {
 	var sum T
-	for i := 0; i < vectorLength; i++ {
+	for i := TIX(0); i < vectorLength; i++ {
 		sum += Abs(a[i] - b[i])
 	}
 	return sum

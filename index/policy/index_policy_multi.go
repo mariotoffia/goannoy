@@ -24,7 +24,7 @@ func (p *annoyIndexMultiThreadedBuildPolicy) Build(
 	numberOfTrees, numberOfWorkers int,
 ) {
 	if numberOfWorkers == -1 {
-		numberOfWorkers = utils.Max(1, runtime.NumCPU())
+		numberOfWorkers = int(utils.Max(uint32(1), uint32(runtime.NumCPU())))
 	}
 
 	var wg sync.WaitGroup

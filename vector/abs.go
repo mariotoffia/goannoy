@@ -1,15 +1,12 @@
 package vector
 
-import "math"
-
-// Abs32 is the same as math.Abs, but for float32.
-func Abs32(x float32) float32 {
-	return math.Float32frombits(math.Float32bits(x) &^ (1 << 31))
-}
+import (
+	"github.com/mariotoffia/goannoy/interfaces"
+)
 
 // Abs is less performant on hardware where floating point operations are
 // expensive, but it is generic.
-func Abs[T Calculable](x T) T {
+func Abs[TV interfaces.VectorType](x TV) TV {
 	if x < 0 {
 		return -x
 	}

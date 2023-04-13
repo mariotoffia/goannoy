@@ -14,21 +14,21 @@ import (
 // can't motivate it well. The basic idea is to keep two centroids and assign
 // points to either one of them. We weight each centroid by the number of points
 // assigned to it, so to balance it.
-func TwoMeans[TV interfaces.VectorType, TR interfaces.RandomTypes](
-	nodes []interfaces.Node[TV],
-	vectorLength int,
-	random interfaces.Random[TR],
+func TwoMeans[TV interfaces.VectorType, TIX interfaces.IndexTypes](
+	nodes []interfaces.Node[TV, TIX],
+	vectorLength TIX,
+	random interfaces.Random[TIX],
 	cosine bool,
-	p, q interfaces.Node[TV],
-	distance interfaces.Distance[TV, TR],
+	p, q interfaces.Node[TV, TIX],
+	distance interfaces.Distance[TV, TIX],
 ) {
 
 	const iterationSteps = 200
 
-	nodeCount := uint32(len(nodes))
+	nodeCount := TIX(len(nodes))
 
-	i := random.NextIndex(TR(nodeCount))
-	j := random.NextIndex(TR(nodeCount - 1))
+	i := random.NextIndex(nodeCount)
+	j := random.NextIndex(nodeCount - 1)
 
 	if j >= i {
 		j++ // ensure that i != j
@@ -50,7 +50,7 @@ func TwoMeans[TV interfaces.VectorType, TR interfaces.RandomTypes](
 
 	ic, jc := float64(1), float64(1)
 	for l := 0; l < iterationSteps; l++ {
-		k := random.NextIndex(TR(nodeCount))
+		k := random.NextIndex(nodeCount)
 
 		di := ic * float64(distance.Distance(p, nodes[k]))
 		dj := jc * float64(distance.Distance(q, nodes[k]))
@@ -70,7 +70,7 @@ func TwoMeans[TV interfaces.VectorType, TR interfaces.RandomTypes](
 		}
 
 		if di < dj {
-			for z := 0; z < vectorLength; z++ {
+			for z := TIX(0); z < vectorLength; z++ {
 				pvec[z] = (pvec[z]*TV(ic) + vec[z]/norm) / TV(ic+1)
 			}
 
@@ -78,7 +78,7 @@ func TwoMeans[TV interfaces.VectorType, TR interfaces.RandomTypes](
 			ic++
 
 		} else if dj < di {
-			for z := 0; z < vectorLength; z++ {
+			for z := TIX(0); z < vectorLength; z++ {
 				qvec[z] = (qvec[z]*TV(jc) + vec[z]/norm) / TV(jc+1)
 			}
 

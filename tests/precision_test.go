@@ -23,40 +23,41 @@ func TestPrecision(t *testing.T) {
 
 	defer allocator.Free()
 
-	numItems := 10000 //1000000
-	vectorLength := 40
+	numItems := uint32(100000) //1000000
+	vectorLength := uint32(40)
 	randomVectorContents := true
-	multiplier := 2
+	multiplier := uint32(2)
+	verbose := false
 
-	idx := index.NewAnnoyIndexImpl[float64, uint32](
+	idx := index.NewAnnoyIndexImpl[float32, uint32](
 		vectorLength,
 		rnd,
-		angular.Distance[float64, uint32](vectorLength),
+		angular.Distance[float32](vectorLength),
 		policy.Multi(),
 		allocator,
 		memory.MmapIndexAllocator(),
-		false, /*verbose*/
+		verbose,
 	)
 
 	defer idx.Close()
 
 	vec_rnd := random.NewGoRandom()
 
-	createVector := func() []float64 {
-		vec := make([]float64, vectorLength)
-		for z := 0; z < vectorLength; z++ {
+	createVector := func() []float32 {
+		vec := make([]float32, vectorLength)
+		for z := uint32(0); z < vectorLength; z++ {
 			if randomVectorContents {
-				vec[z] = vec_rnd.NormFloat64()
+				vec[z] = float32(vec_rnd.NormFloat64())
 			} else {
-				vec[z] = float64(z + 1)
+				vec[z] = float32(z + 1)
 			}
 		}
 
 		return vec
 	}
 
-	vectors := make([][]float64, numItems)
-	for i := 0; i < numItems; i++ {
+	vectors := make([][]float32, numItems)
+	for i := uint32(0); i < numItems; i++ {
 		v := createVector()
 		vectors[i] = v
 		idx.AddItem(i, v)
@@ -75,7 +76,7 @@ func TestPrecision(t *testing.T) {
 	)
 
 	dur := utils.Measure(func() {
-		idx.Build(multiplier*vectorLength, -1)
+		idx.Build(int(multiplier*vectorLength), -1)
 	})
 
 	f.WriteString(fmt.Sprintf("build time: %d ms\n", dur.Milliseconds()))
@@ -91,12 +92,12 @@ func TestPrecision(t *testing.T) {
 
 	f.WriteString(fmt.Sprintf("Saved in %d ms\n", dur.Milliseconds()))
 
-	for i := 0; i < numItems; i++ {
+	for i := uint32(0); i < numItems; i++ {
 		v := vectors[i]
 		iv := idx.GetItemVector(i)
 
 		// Compare vectors
-		for j := 0; j < vectorLength; j++ {
+		for j := uint32(0); j < vectorLength; j++ {
 			if v[j] != iv[j] {
 				t.Fatalf("Vector mismatch at index %d, %f != %f", j, v[j], iv[j])
 			}
@@ -104,7 +105,7 @@ func TestPrecision(t *testing.T) {
 	}
 
 	var limits []int
-	for i := 1; i <= numItems; i *= 10 {
+	for i := 1; i <= int(numItems); i *= 10 {
 		limits = append(limits, i)
 	}
 
@@ -112,7 +113,7 @@ func TestPrecision(t *testing.T) {
 	prec_n := 1000
 	prec_sum := make(map[int]float64)
 	time_sum := make(map[int]float64)
-	var closest []int
+	var closest []uint32
 
 	// init precision and timers map
 	for _, limit := range limits {
@@ -123,16 +124,16 @@ func TestPrecision(t *testing.T) {
 	// doing the work
 	for i := 0; i < prec_n; i++ {
 		// select a random node
-		j := int(rnd.NextIndex(uint32(numItems)))
+		j := rnd.NextIndex(uint32(numItems))
 
 		f.WriteString(fmt.Sprintf("finding nbs for %d\n", j))
 
 		// getting the K closest
-		closest, _ = idx.GetNnsByItem(j, numReturn, numItems)
+		closest, _ = idx.GetNnsByItem(j, numReturn, int(numItems))
 
 		for _, limit := range limits {
 
-			dur, topList := utils.MeasureWithReturn(func() []int {
+			dur, topList := utils.MeasureWithReturn(func() []uint32 {
 				c, _ := idx.GetNnsByItem(j, limit, -1)
 				return c
 			})
@@ -150,8 +151,14 @@ func TestPrecision(t *testing.T) {
 		prec := prec_sum[limit] / float64(prec_n)
 		time := time_sum[limit] / float64(prec_n)
 
-		f.WriteString(
-			fmt.Sprintf("limit = %d, precision = %f, time = %f us\n", limit, prec, time),
-		)
+		if time >= 1000 {
+			f.WriteString(
+				fmt.Sprintf("limit = %d, precision = %f, time = %f ms\n", limit, prec, time/1000),
+			)
+		} else {
+			f.WriteString(
+				fmt.Sprintf("limit = %d, precision = %f, time = %f us\n", limit, prec, time),
+			)
+		}
 	}
 }
