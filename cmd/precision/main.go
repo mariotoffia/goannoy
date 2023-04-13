@@ -32,6 +32,7 @@ func main() {
 	flag.BoolVar(&verbose, "verbose", false, "Verbose output")
 	flag.IntVar(&numItems, "items", 1000, "Number of items to create")
 	flag.IntVar(&vectorLength, "length", 40, "Vector length")
+	flag.IntVar(&prec_n, "prec", 1000, "Number of items to test precision for")
 
 	flag.Parse()
 

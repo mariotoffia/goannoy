@@ -1,7 +1,6 @@
 package index
 
 import (
-	"sort"
 	"unsafe"
 
 	"github.com/mariotoffia/goannoy/interfaces"
@@ -137,9 +136,7 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 	}
 
 	// Inefficient since it will sort the whole slice!
-	sort.Slice(nns_dist, func(i, j int) bool {
-		return nns_dist[i].Less(nns_dist[j])
-	})
+	utils.SortPairs(nns_dist)
 
 	nns_dist_partial := nns_dist[:p]
 
