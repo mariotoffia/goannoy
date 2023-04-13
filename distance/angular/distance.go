@@ -80,19 +80,25 @@ func (a *angularDistanceImpl[TV, TIX]) Normalize(node interfaces.Node[TV, TIX]) 
 func (a *angularDistanceImpl[TV, TIX]) Distance(x interfaces.Node[TV, TIX], y interfaces.Node[TV, TIX]) TV {
 	pp := x.GetNorm()
 	qq := y.GetNorm()
+	xv := x.GetRawVector()
+	yv := y.GetRawVector()
 
 	if pp == 0 {
-		pp = vector.DotUnsafe(x.GetRawVector(), x.GetRawVector(), a.vectorLength)
+		pp = vector.DotUnsafe(xv, xv, a.vectorLength)
 	}
 
 	if qq == 0 {
-		qq = vector.DotUnsafe(y.GetRawVector(), y.GetRawVector(), a.vectorLength)
+		qq = vector.DotUnsafe(yv, yv, a.vectorLength)
 	}
 
-	pq := vector.DotUnsafe(x.GetRawVector(), y.GetRawVector(), a.vectorLength)
-	ppqq := pp * qq
+	var ppqq TV
+
+	if pp != 0 {
+		ppqq = pp * qq
+	}
 
 	if ppqq > 0 {
+		pq := vector.DotUnsafe(xv, yv, a.vectorLength)
 		return 2.0 - 2.0*pq/TV(math.Sqrt(float64(ppqq)))
 	}
 	return 2.0
