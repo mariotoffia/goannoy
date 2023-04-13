@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"testing"
@@ -23,11 +24,13 @@ func TestPrecision(t *testing.T) {
 
 	defer allocator.Free()
 
-	numItems := uint32(100000) //1000000
+	numItems := uint32(10000) //1000000
 	vectorLength := uint32(40)
 	randomVectorContents := true
 	multiplier := uint32(2)
 	verbose := false
+
+	var buffer bytes.Buffer
 
 	idx := index.NewAnnoyIndexImpl[float32, uint32](
 		vectorLength,
@@ -56,33 +59,37 @@ func TestPrecision(t *testing.T) {
 		return vec
 	}
 
-	vectors := make([][]float32, numItems)
-	for i := uint32(0); i < numItems; i++ {
-		v := createVector()
-		vectors[i] = v
-		idx.AddItem(i, v)
-	}
-
-	// output resulting metrics to file results.txt
-	f, err := os.Create("results.txt")
-	require.NoError(t, err)
-
-	defer f.Close()
-
-	f.WriteString(
-		fmt.Sprintf(
-			"numItems: %d, vectorLength: %d, multiplier: %d, randomVectorContents: %t\n",
-			numItems, vectorLength, multiplier, randomVectorContents),
+	fmt.Fprintf(
+		&buffer, "Create index: numItems: %d, vectorLength: %d, multiplier: %d, randomVectorContents: %t\n",
+		numItems, vectorLength, multiplier, randomVectorContents,
 	)
 
+	vectors := make([][]float32, numItems)
+
 	dur := utils.Measure(func() {
+		for i := uint32(0); i < numItems; i++ {
+			v := createVector()
+			vectors[i] = v
+			idx.AddItem(i, v)
+		}
+	})
+
+	fmt.Fprintf(&buffer, "Index creation time: %d ms\n", dur.Milliseconds())
+
+	fmt.Fprintf(
+		&buffer, "numItems: %d, vectorLength: %d, multiplier: %d, randomVectorContents: %t\n",
+		numItems, vectorLength, multiplier, randomVectorContents)
+
+	dur = utils.Measure(func() {
 		idx.Build(int(multiplier*vectorLength), -1)
 	})
 
-	f.WriteString(fmt.Sprintf("build time: %d ms\n", dur.Milliseconds()))
-	f.WriteString(fmt.Sprintln("Saving index ..."))
+	fmt.Fprintf(&buffer, "Build time: %d ms\n", dur.Milliseconds())
+	fmt.Fprintf(&buffer, "Saving index ...")
 
 	defer os.Remove("test.ann")
+
+	var err error
 
 	dur, err = utils.MeasureWithReturn(func() error {
 		return idx.Save("test.ann")
@@ -90,7 +97,7 @@ func TestPrecision(t *testing.T) {
 
 	require.NoError(t, err)
 
-	f.WriteString(fmt.Sprintf("Saved in %d ms\n", dur.Milliseconds()))
+	fmt.Fprintf(&buffer, "Saved in %d ms\n", dur.Milliseconds())
 
 	for i := uint32(0); i < numItems; i++ {
 		v := vectors[i]
@@ -126,7 +133,7 @@ func TestPrecision(t *testing.T) {
 		// select a random node
 		j := rnd.NextIndex(uint32(numItems))
 
-		f.WriteString(fmt.Sprintf("finding nbs for %d\n", j))
+		fmt.Fprintf(&buffer, "finding nbs for %d\n", j)
 
 		// getting the K closest
 		closest, _ = idx.GetNnsByItem(j, numReturn, int(numItems))
@@ -152,13 +159,20 @@ func TestPrecision(t *testing.T) {
 		time := time_sum[limit] / float64(prec_n)
 
 		if time >= 1000 {
-			f.WriteString(
-				fmt.Sprintf("limit = %d, precision = %f, time = %f ms\n", limit, prec, time/1000),
+			fmt.Fprintf(
+				&buffer, "limit = %d, precision = %f, time = %f ms\n", limit, prec, time/1000,
 			)
 		} else {
-			f.WriteString(
-				fmt.Sprintf("limit = %d, precision = %f, time = %f us\n", limit, prec, time),
+			fmt.Fprintf(
+				&buffer, "limit = %d, precision = %f, time = %f us\n", limit, prec, time,
 			)
 		}
 	}
+
+	// output resulting metrics to file results.txt
+	f, err := os.Create("results.txt")
+	require.NoError(t, err)
+
+	defer f.Close()
+	f.WriteString(buffer.String())
 }
