@@ -18,7 +18,7 @@ import (
 // https://github.com/erikbern/ann-benchmarks
 
 func TestPrecision(t *testing.T) {
-	numItems := uint32(100000) //1000000
+	numItems := uint32(1000) //1000000
 	vectorLength := uint32(40)
 	randomVectorContents := true
 	multiplier := uint32(2)

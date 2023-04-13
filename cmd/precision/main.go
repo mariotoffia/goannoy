@@ -25,7 +25,7 @@ func main() {
 	keepAnnFile := false
 	toFile := false
 	numReturn := 10
-	prec_n := 100
+	prec_n := 1000
 
 	flag.BoolVar(&toFile, "file", false, "Write output to file results.txt")
 	flag.BoolVar(&keepAnnFile, "keep", false, "Keep the .ann file")
