@@ -200,11 +200,13 @@ func main() {
 
 		if time >= 1000 {
 			fmt.Fprintf(
-				buffer, "limit = %d, precision = %f, time = %f ms\n", limit, prec, time/1000,
+				buffer, "limit = %d, precision = %f, time = %f ms, recall = %d times/s\n",
+				limit, prec, time/1000, int(1000/(time/1000)),
 			)
 		} else {
 			fmt.Fprintf(
-				buffer, "limit = %d, precision = %f, time = %f us\n", limit, prec, time,
+				buffer, "limit = %d, precision = %f, time = %f us, recall = %d times/s\n",
+				limit, prec, time, int(1000000/time),
 			)
 		}
 	}
