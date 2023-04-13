@@ -1,10 +1,11 @@
-package tests
+package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
+	"io"
 	"os"
-	"testing"
 
 	"github.com/mariotoffia/goannoy/distance/angular"
 	"github.com/mariotoffia/goannoy/index"
@@ -12,33 +13,47 @@ import (
 	"github.com/mariotoffia/goannoy/index/policy"
 	"github.com/mariotoffia/goannoy/random"
 	"github.com/mariotoffia/goannoy/utils"
-	"github.com/stretchr/testify/require"
 )
 
-// https://github.com/erikbern/ann-benchmarks
-
-func TestPrecision(t *testing.T) {
-	numItems := uint32(100000) //1000000
-	vectorLength := uint32(40)
+func main() {
+	numItems := 1000
+	vectorLength := 40
 	randomVectorContents := true
 	multiplier := uint32(2)
 	verbose := false
 	justGenerate := false
 	keepAnnFile := false
+	toFile := false
+	numReturn := 10
+	prec_n := 100
 
-	var buffer bytes.Buffer
+	flag.BoolVar(&toFile, "file", false, "Write output to file results.txt")
+	flag.BoolVar(&keepAnnFile, "keep", false, "Keep the .ann file")
+	flag.BoolVar(&verbose, "verbose", false, "Verbose output")
+	flag.IntVar(&numItems, "items", 1000, "Number of items to create")
+	flag.IntVar(&vectorLength, "length", 40, "Vector length")
+
+	flag.Parse()
+
+	var buffer io.Writer
+
+	if toFile {
+		buffer = &bytes.Buffer{}
+	} else {
+		buffer = os.Stdout
+	}
 
 	rnd := random.NewKiss32Random(uint32(0) /*default seed*/)
 
 	idx := index.NewAnnoyIndexImpl[float32, uint32](
-		vectorLength,
+		uint32(vectorLength),
 		rnd,
-		angular.Distance[float32](vectorLength),
+		angular.Distance[float32](uint32(vectorLength)),
 		policy.MultiWorker(),
 		memory.IndexMemoryAllocator(),
 		memory.MmapIndexAllocator(),
 		verbose,
-		numItems*multiplier, /*alloc hint for faster build*/
+		uint32(numItems)*multiplier, /*alloc hint for faster build*/
 	)
 
 	defer idx.Close()
@@ -47,7 +62,7 @@ func TestPrecision(t *testing.T) {
 
 	createVector := func() []float32 {
 		vec := make([]float32, vectorLength)
-		for z := uint32(0); z < vectorLength; z++ {
+		for z := uint32(0); z < uint32(vectorLength); z++ {
 			if randomVectorContents {
 				vec[z] = float32(vec_rnd.NormFloat64())
 			} else {
@@ -59,32 +74,32 @@ func TestPrecision(t *testing.T) {
 	}
 
 	fmt.Fprintf(
-		&buffer, "Create index: numItems: %d, vectorLength: %d, multiplier: %d, randomVectorContents: %t\n",
+		buffer, "Create index: numItems: %d, vectorLength: %d, multiplier: %d, randomVectorContents: %t\n",
 		numItems, vectorLength, multiplier, randomVectorContents,
 	)
 
 	vectors := make([][]float32, numItems)
 
 	dur := utils.Measure(func() {
-		for i := uint32(0); i < numItems; i++ {
+		for i := 0; i < numItems; i++ {
 			v := createVector()
 			vectors[i] = v
-			idx.AddItem(i, v)
+			idx.AddItem(uint32(i), v)
 		}
 	})
 
-	fmt.Fprintf(&buffer, "Index creation time: %d ms\n", dur.Milliseconds())
+	fmt.Fprintf(buffer, "Index creation time: %d ms\n", dur.Milliseconds())
 
 	fmt.Fprintf(
-		&buffer, "numItems: %d, vectorLength: %d, multiplier: %d, randomVectorContents: %t\n",
+		buffer, "numItems: %d, vectorLength: %d, multiplier: %d, randomVectorContents: %t\n",
 		numItems, vectorLength, multiplier, randomVectorContents)
 
 	dur = utils.Measure(func() {
-		idx.Build(int(multiplier*vectorLength), -1)
+		idx.Build(int(multiplier*uint32(vectorLength)), -1)
 	})
 
-	fmt.Fprintf(&buffer, "Build time: %d ms\n", dur.Milliseconds())
-	fmt.Fprintf(&buffer, "Saving index ...\n")
+	fmt.Fprintf(buffer, "Build time: %d ms\n", dur.Milliseconds())
+	fmt.Fprintf(buffer, "Saving index ...\n")
 
 	defer func() {
 		if !keepAnnFile {
@@ -98,31 +113,38 @@ func TestPrecision(t *testing.T) {
 		return idx.Save("test.ann")
 	})
 
-	require.NoError(t, err)
+	if err != nil {
+		panic(fmt.Sprintf("Error creating file: %s", err.Error()))
+	}
 
-	fmt.Fprintf(&buffer, "Saved in %d ms\n", dur.Milliseconds())
+	fmt.Fprintf(buffer, "Saved in %d ms\n", dur.Milliseconds())
 
 	defer func() {
+		if !toFile {
+			return
+		}
 		// output resulting metrics to file results.txt
 		f, err := os.Create("results.txt")
-		require.NoError(t, err)
+		if err != nil {
+			panic(fmt.Sprintf("Error creating file: %s", err.Error()))
+		}
 
 		defer f.Close()
-		f.WriteString(buffer.String())
+		f.WriteString(buffer.(*bytes.Buffer).String())
 
 	}()
 
 	if justGenerate {
 		return
 	}
-	for i := uint32(0); i < numItems; i++ {
+	for i := 0; i < numItems; i++ {
 		v := vectors[i]
-		iv := idx.GetItemVector(i)
+		iv := idx.GetItemVector(uint32(i))
 
 		// Compare vectors
-		for j := uint32(0); j < vectorLength; j++ {
+		for j := uint32(0); j < uint32(vectorLength); j++ {
 			if v[j] != iv[j] {
-				t.Fatalf("Vector mismatch at index %d, %f != %f", j, v[j], iv[j])
+				panic(fmt.Sprintf("Vector mismatch at index %d, %f != %f", j, v[j], iv[j]))
 			}
 		}
 	}
@@ -135,8 +157,6 @@ func TestPrecision(t *testing.T) {
 		}
 	}
 
-	numReturn := 10
-	prec_n := 1000
 	prec_sum := make(map[int]float64)
 	time_sum := make(map[int]float64)
 	var closest []uint32
@@ -152,7 +172,7 @@ func TestPrecision(t *testing.T) {
 		// select a random node
 		j := rnd.NextIndex(uint32(numItems))
 
-		fmt.Fprintf(&buffer, "finding nbs for %d\n", j)
+		fmt.Fprintf(buffer, "finding nbs for %d\n", j)
 
 		// getting the K closest
 		closest, _ = idx.GetNnsByItem(j, numReturn, int(numItems))
@@ -179,11 +199,11 @@ func TestPrecision(t *testing.T) {
 
 		if time >= 1000 {
 			fmt.Fprintf(
-				&buffer, "limit = %d, precision = %f, time = %f ms\n", limit, prec, time/1000,
+				buffer, "limit = %d, precision = %f, time = %f ms\n", limit, prec, time/1000,
 			)
 		} else {
 			fmt.Fprintf(
-				&buffer, "limit = %d, precision = %f, time = %f us\n", limit, prec, time,
+				buffer, "limit = %d, precision = %f, time = %f us\n", limit, prec, time,
 			)
 		}
 	}
