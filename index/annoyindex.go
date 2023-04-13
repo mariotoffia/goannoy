@@ -13,14 +13,13 @@ const reallocation_factor = float64(1.5)
 
 // AnnoyIndexImpl is the actual index for all vectors.
 //
-// A Note from the author:
+// A Note from the authors https://github.com/spotify/annoy
 //
 // We use random projection to build a forest of binary trees of all items.
 // Basically just split the hyperspace into two sides by a hyperplane,
 // then recursively split each of those subtrees etc.
 // We create a tree like this q times. The default q is determined automatically
 // in such a way that we at most use 2x as much memory as the vectors take.
-
 type AnnoyIndexImpl[
 	TV interfaces.VectorType,
 	TIX interfaces.IndexTypes] struct {
@@ -47,6 +46,26 @@ type AnnoyIndexImpl[
 	indexMemory          interfaces.IndexMemory
 }
 
+// NewAnnoyIndexImpl create a new index instance based on the _TV_ for the vector
+// and _TIX_ for the index type. When done use the `io.Closer.Close()` to clean up
+// any resources.
+//
+// The _vectorLength_ is the number of elements in the vector that this index handles.
+// The _random_ is the random generator to use for the index. The _distance_ is the
+// distance functions to use for the index (_see sub-packages under distance/ for different
+// types_). The _buildPolicy_ is the policy to use when building the index. Those are located
+// in the `policy` package. The _allocator_ is the allocator to use while building the index.
+// Allocators reside in `package memory`.
+//
+// NOTE: It is possible to provide with a positive integer for _hintNumIndexes_ to pre-allocate
+// to speed up the index creation.
+//
+// The _indexMemoryAllocator_ is the allocator to use for the index memory when loading it from
+// file. See `package memory` for more information. It is possible to output to stdout by setting
+// _logVerbose_ to `true`. This will output the progress of the index creation.
+//
+// Use `AddIndex` and when done, `Build` to build the index. `Save` the index, and thus is then
+// ready to be used for lookups.
 func NewAnnoyIndexImpl[
 	TV interfaces.VectorType,
 	TIX interfaces.IndexTypes](
