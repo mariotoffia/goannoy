@@ -2,7 +2,7 @@ package policy
 
 import "github.com/mariotoffia/goannoy/interfaces"
 
-func Single() *annoyIndexSingleThreadedBuildPolicy {
+func SingleWorker() *annoyIndexSingleThreadedBuildPolicy {
 	return &annoyIndexSingleThreadedBuildPolicy{}
 }
 

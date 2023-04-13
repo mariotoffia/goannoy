@@ -9,7 +9,7 @@ import (
 	"github.com/mariotoffia/goannoy/utils"
 )
 
-func Multi() *annoyIndexMultiThreadedBuildPolicy {
+func MultiWorker() *annoyIndexMultiThreadedBuildPolicy {
 	return &annoyIndexMultiThreadedBuildPolicy{}
 }
 

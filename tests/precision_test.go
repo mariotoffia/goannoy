@@ -36,7 +36,7 @@ func TestPrecision(t *testing.T) {
 		vectorLength,
 		rnd,
 		angular.Distance[float32](vectorLength),
-		policy.Multi(),
+		policy.MultiWorker(),
 		allocator,
 		memory.MmapIndexAllocator(),
 		verbose,
@@ -114,6 +114,9 @@ func TestPrecision(t *testing.T) {
 	var limits []int
 	for i := 1; i <= int(numItems); i *= 10 {
 		limits = append(limits, i)
+		if i == 100 {
+			limits = append(limits, 500)
+		}
 	}
 
 	numReturn := 10
