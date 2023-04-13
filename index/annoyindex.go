@@ -90,7 +90,9 @@ func (idx *AnnoyIndexImpl[TV, TIX]) Close() error {
 		idx.indexMemory = nil
 	}
 
-	idx.allocator.Free()
+	if idx.allocator != nil {
+		idx.allocator.Free()
+	}
 
 	idx._nodes = nil
 	idx.indexLoaded = false

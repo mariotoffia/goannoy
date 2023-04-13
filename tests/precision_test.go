@@ -19,30 +19,27 @@ import (
 // https://github.com/erikbern/ann-benchmarks
 
 func TestPrecision(t *testing.T) {
-	numItems := uint32(1000000) //1000000
+	numItems := uint32(1000) //1000000
 	vectorLength := uint32(40)
 	randomVectorContents := true
 	multiplier := uint32(2)
 	verbose := false
-	justGenerate := true
-	keepAnnFile := true
+	justGenerate := false
+	keepAnnFile := false
 
 	var buffer bytes.Buffer
 
 	rnd := random.NewKiss32Random(uint32(0) /*default seed*/)
-	allocator := memory.IndexMemoryAllocator()
-
-	defer allocator.Free()
 
 	idx := index.NewAnnoyIndexImpl[float32, uint32](
 		vectorLength,
 		rnd,
 		angular.Distance[float32](vectorLength),
 		policy.MultiWorker(),
-		allocator,
+		memory.IndexMemoryAllocator(),
 		memory.MmapIndexAllocator(),
 		verbose,
-		numItems*multiplier,
+		numItems*multiplier, /*alloc hint for faster build*/
 	)
 
 	defer idx.Close()
@@ -88,7 +85,7 @@ func TestPrecision(t *testing.T) {
 	})
 
 	fmt.Fprintf(&buffer, "Build time: %d ms\n", dur.Milliseconds())
-	fmt.Fprintf(&buffer, "Saving index ...")
+	fmt.Fprintf(&buffer, "Saving index ...\n")
 
 	defer func() {
 		if !keepAnnFile {

@@ -1,6 +1,8 @@
 package interfaces
 
-import "unsafe"
+import (
+	"unsafe"
+)
 
 type Allocator interface {
 	// Free frees the memory allocated by the allocator.

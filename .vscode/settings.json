@@ -4,6 +4,7 @@
   },
   "go.testTimeout": "360s",
   "cSpell.words": [
+    "alloc",
     "amath",
     "ANNOYLIB",
     "datapoint",
