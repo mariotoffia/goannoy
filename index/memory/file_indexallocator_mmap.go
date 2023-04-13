@@ -8,29 +8,29 @@ import (
 	"github.com/mariotoffia/goannoy/interfaces"
 )
 
-type mmap struct {
-	indexes map[string]*mappedIndex
+type mmapIndexAllocator struct {
+	indexes map[string]*mmapIndexAllocation
 }
 
-type mappedIndex struct {
+type mmapIndexAllocation struct {
 	fqFile string
 	file   *os.File
 	ptr    unsafe.Pointer
 	size   int64
 	data   []byte
-	parent *mmap
+	parent *mmapIndexAllocator
 }
 
-func (mi *mappedIndex) Ptr() unsafe.Pointer {
+func (mi *mmapIndexAllocation) Ptr() unsafe.Pointer {
 	return mi.ptr
 }
 
-func (mi *mappedIndex) Size() int64 {
+func (mi *mmapIndexAllocation) Size() int64 {
 	return mi.size
 }
 
 // Implements `io.Closer` interface
-func (mi *mappedIndex) Close() error {
+func (mi *mmapIndexAllocation) Close() error {
 	delete(mi.parent.indexes, mi.fqFile)
 
 	var err error
@@ -52,18 +52,18 @@ func (mi *mappedIndex) Close() error {
 	return err
 }
 
-func MmapIndexAllocator() *mmap {
-	return &mmap{
-		indexes: map[string]*mappedIndex{},
+func MmapIndexAllocator() *mmapIndexAllocator {
+	return &mmapIndexAllocator{
+		indexes: map[string]*mmapIndexAllocation{},
 	}
 }
 
-func (mm *mmap) Get(fqFile string) (interfaces.IndexMemory, bool) {
+func (mm *mmapIndexAllocator) Get(fqFile string) (interfaces.IndexMemory, bool) {
 	index, ok := mm.indexes[fqFile]
 	return index, ok
 }
 
-func (mm *mmap) Open(fqFile string) (interfaces.IndexMemory, error) {
+func (mm *mmapIndexAllocator) Open(fqFile string) (interfaces.IndexMemory, error) {
 	file, err := os.Open(fqFile)
 	if err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ func (mm *mmap) Open(fqFile string) (interfaces.IndexMemory, error) {
 		return nil, err
 	}
 
-	mi := &mappedIndex{
+	mi := &mmapIndexAllocation{
 		parent: mm,
 		fqFile: fqFile,
 		file:   file,

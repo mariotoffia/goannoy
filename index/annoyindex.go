@@ -9,6 +9,8 @@ import (
 	"github.com/mariotoffia/goannoy/utils"
 )
 
+const reallocation_factor = float64(1.5)
+
 // AnnoyIndexImpl is the actual index for all vectors.
 //
 // A Note from the author:
@@ -55,7 +57,9 @@ func NewAnnoyIndexImpl[
 	allocator interfaces.Allocator,
 	indexMemoryAllocator interfaces.IndexMemoryAllocator,
 	logVerbose bool,
+	hintNumIndexes TIX,
 ) *AnnoyIndexImpl[TV, TIX] {
+	//
 	index := &AnnoyIndexImpl[TV, TIX]{
 		vectorLength:         vectorLength,              // _f
 		random:               random,                    // _seed
@@ -67,6 +71,11 @@ func NewAnnoyIndexImpl[
 		allocator:            allocator,
 		buildPolicy:          buildPolicy,
 		indexMemoryAllocator: indexMemoryAllocator,
+	}
+
+	// Pre-allocate memory for the index if hintNumIndexes is set > 0
+	if hintNumIndexes > 0 {
+		allocator.Reallocate(int(float64(distance.NodeSize()*hintNumIndexes) * reallocation_factor))
 	}
 
 	return index
@@ -418,8 +427,6 @@ func (idx *AnnoyIndexImpl[TV, TIX]) allocateSize(
 	numNodes TIX,
 	threadedBuildPolicy interfaces.AnnoyIndexBuildPolicy,
 ) {
-	const reallocation_factor = float64(1.3)
-
 	if numNodes > idx._nodes_size {
 
 		if threadedBuildPolicy != nil {

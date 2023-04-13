@@ -9,28 +9,28 @@ import (
 	"github.com/mariotoffia/goannoy/interfaces"
 )
 
-type fileIndexer struct {
-	indexes map[string]*fileIndex
+type fileIndexerAllocator struct {
+	indexes map[string]*fileIndexAllocation
 }
 
-type fileIndex struct {
+type fileIndexAllocation struct {
 	fqFile string
 	ptr    unsafe.Pointer
 	data   []byte
 	size   int64
-	parent *fileIndexer
+	parent *fileIndexerAllocator
 }
 
-func (fi *fileIndex) Ptr() unsafe.Pointer {
+func (fi *fileIndexAllocation) Ptr() unsafe.Pointer {
 	return fi.ptr
 }
 
-func (fi *fileIndex) Size() int64 {
+func (fi *fileIndexAllocation) Size() int64 {
 	return fi.size
 }
 
 // Implements `io.Closer` interface
-func (fi *fileIndex) Close() error {
+func (fi *fileIndexAllocation) Close() error {
 	delete(fi.parent.indexes, fi.fqFile)
 
 	fi.data = nil
@@ -39,18 +39,18 @@ func (fi *fileIndex) Close() error {
 	return nil
 }
 
-func FileIndexMemoryAllocator() *fileIndexer {
-	return &fileIndexer{
-		indexes: map[string]*fileIndex{},
+func FileIndexMemoryAllocator() *fileIndexerAllocator {
+	return &fileIndexerAllocator{
+		indexes: map[string]*fileIndexAllocation{},
 	}
 }
 
-func (mm *fileIndexer) Get(fqFile string) (interfaces.IndexMemory, bool) {
+func (mm *fileIndexerAllocator) Get(fqFile string) (interfaces.IndexMemory, bool) {
 	index, ok := mm.indexes[fqFile]
 	return index, ok
 }
 
-func (mm *fileIndexer) Open(fqFile string) (interfaces.IndexMemory, error) {
+func (mm *fileIndexerAllocator) Open(fqFile string) (interfaces.IndexMemory, error) {
 	file, err := os.Open(fqFile)
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func (mm *fileIndexer) Open(fqFile string) (interfaces.IndexMemory, error) {
 		return nil, err
 	}
 
-	fi := &fileIndex{
+	fi := &fileIndexAllocation{
 		parent: mm,
 		fqFile: fqFile,
 		size:   fileInfo.Size(),

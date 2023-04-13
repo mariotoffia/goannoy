@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"github.com/jfcg/sorty/v2"
 	"github.com/mariotoffia/goannoy/interfaces"
 )
 
@@ -13,8 +12,8 @@ func Max[T interfaces.IndexTypes](a, b T) T {
 }
 
 func Intersection[TIX interfaces.IndexTypes](a, b []TIX) []TIX {
-	sorty.SortSlice(a)
-	sorty.SortSlice(b)
+	SortSlice(a)
+	SortSlice(b)
 
 	maxSize := len(a)
 

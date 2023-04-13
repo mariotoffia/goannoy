@@ -19,18 +19,20 @@ import (
 // https://github.com/erikbern/ann-benchmarks
 
 func TestPrecision(t *testing.T) {
-	rnd := random.NewKiss32Random(uint32(0) /*default seed*/)
-	allocator := memory.NewBuildIndexMemoryArenaAllocator()
-
-	defer allocator.Free()
-
-	numItems := uint32(10000) //1000000
+	numItems := uint32(1000000) //1000000
 	vectorLength := uint32(40)
 	randomVectorContents := true
 	multiplier := uint32(2)
 	verbose := false
+	justGenerate := true
+	keepAnnFile := true
 
 	var buffer bytes.Buffer
+
+	rnd := random.NewKiss32Random(uint32(0) /*default seed*/)
+	allocator := memory.IndexMemoryAllocator()
+
+	defer allocator.Free()
 
 	idx := index.NewAnnoyIndexImpl[float32, uint32](
 		vectorLength,
@@ -40,6 +42,7 @@ func TestPrecision(t *testing.T) {
 		allocator,
 		memory.MmapIndexAllocator(),
 		verbose,
+		numItems*multiplier,
 	)
 
 	defer idx.Close()
@@ -87,7 +90,11 @@ func TestPrecision(t *testing.T) {
 	fmt.Fprintf(&buffer, "Build time: %d ms\n", dur.Milliseconds())
 	fmt.Fprintf(&buffer, "Saving index ...")
 
-	defer os.Remove("test.ann")
+	defer func() {
+		if !keepAnnFile {
+			os.Remove("test.ann")
+		}
+	}()
 
 	var err error
 
@@ -99,6 +106,19 @@ func TestPrecision(t *testing.T) {
 
 	fmt.Fprintf(&buffer, "Saved in %d ms\n", dur.Milliseconds())
 
+	defer func() {
+		// output resulting metrics to file results.txt
+		f, err := os.Create("results.txt")
+		require.NoError(t, err)
+
+		defer f.Close()
+		f.WriteString(buffer.String())
+
+	}()
+
+	if justGenerate {
+		return
+	}
 	for i := uint32(0); i < numItems; i++ {
 		v := vectors[i]
 		iv := idx.GetItemVector(i)
@@ -171,11 +191,4 @@ func TestPrecision(t *testing.T) {
 			)
 		}
 	}
-
-	// output resulting metrics to file results.txt
-	f, err := os.Create("results.txt")
-	require.NoError(t, err)
-
-	defer f.Close()
-	f.WriteString(buffer.String())
 }
