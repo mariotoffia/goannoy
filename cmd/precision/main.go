@@ -11,6 +11,7 @@ import (
 	"github.com/mariotoffia/goannoy/index"
 	"github.com/mariotoffia/goannoy/index/memory"
 	"github.com/mariotoffia/goannoy/index/policy"
+	"github.com/mariotoffia/goannoy/interfaces"
 	"github.com/mariotoffia/goannoy/random"
 	"github.com/mariotoffia/goannoy/utils"
 	"github.com/pkg/profile"
@@ -29,6 +30,7 @@ func main() {
 	prec_n := 1000
 	cpuProfile := false
 	memProfile := false
+	useMemoryIndexAllocator := false
 
 	flag.BoolVar(&toFile, "file", false, "Write output to file results.txt")
 	flag.BoolVar(&keepAnnFile, "keep", false, "Keep the .ann file")
@@ -37,7 +39,8 @@ func main() {
 	flag.IntVar(&vectorLength, "length", 40, "Vector length")
 	flag.IntVar(&prec_n, "prec", 1000, "Number of items to test precision for")
 	flag.BoolVar(&cpuProfile, "cpu-profile", false, "Enable CPU profiling")
-	flag.BoolVar(&memProfile, "mem-profile", false, "Enable memory profiling")
+	flag.BoolVar(&memProfile, "mem-profile", false, "Enable memory profiling (go tool pprof /path/to/profile)")
+	flag.BoolVar(&useMemoryIndexAllocator, "use-memory-index-allocator", false, "Use memory index allocator (default is mmap)")
 
 	flag.Parse()
 
@@ -56,13 +59,21 @@ func main() {
 
 	rnd := random.NewKiss32Random(uint32(0) /*default seed*/)
 
+	var indexMemoryAllocator interfaces.IndexMemoryAllocator
+
+	if useMemoryIndexAllocator {
+		indexMemoryAllocator = memory.FileIndexMemoryAllocator()
+	} else {
+		indexMemoryAllocator = memory.MmapIndexAllocator()
+	}
+
 	idx := index.NewAnnoyIndexImpl[float32, uint32](
 		uint32(vectorLength),
 		rnd,
 		angular.Distance[float32](uint32(vectorLength)),
 		policy.MultiWorker(),
 		memory.IndexMemoryAllocator(),
-		memory.MmapIndexAllocator(),
+		indexMemoryAllocator,
 		verbose,
 		uint32(numItems)*multiplier, /*alloc hint for faster build*/
 	)
