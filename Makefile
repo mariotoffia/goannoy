@@ -33,4 +33,4 @@ bench:
 clean:
 	@echo "Cleaning build artifacts and coverage information..."
 	@rm -rf $(BUILD_DIR) $(COVERAGE_FILE)
-	@rm -rf tests/*.ann
+	@rm -rf tests/*.ann *.ann results.txt tests/results.txt

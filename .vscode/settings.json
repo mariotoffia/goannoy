@@ -1,7 +1,4 @@
 {
-  "go.toolsEnvVars": {
-    "GOEXPERIMENT": "arenas"
-  },
   "go.testTimeout": "360s",
   "cSpell.words": [
     "alloc",
