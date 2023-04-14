@@ -32,8 +32,11 @@ type AnnoyIndexImpl[
 	_n_nodes TIX
 	// _nodes_size is the number of nodes that has been allocated.
 	// Total size is _node_size * nodeSize
-	_nodes_size          TIX
-	_roots               []TIX
+	_nodes_size TIX
+	_roots      []TIX
+	// batchMaxNNS is the maximum of indexes that a query can possibly create.
+	// This is updated each time a index is loaded.
+	batchMaxNNS          int
 	logVerbose           bool
 	maxDescendants       TIX
 	random               interfaces.Random[TIX]

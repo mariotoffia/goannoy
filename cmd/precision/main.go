@@ -169,6 +169,8 @@ func main() {
 	}
 
 	// doing the work
+	batchContext := idx.GetBatchContext()
+
 	for i := 0; i < prec_n; i++ {
 		// select a random node
 		j := rnd.NextIndex(uint32(numItems))
@@ -176,12 +178,12 @@ func main() {
 		fmt.Fprintf(buffer, "finding nbs for %d\n", j)
 
 		// getting the K closest
-		closest, _ = idx.GetNnsByItem(j, numReturn, int(numItems))
+		closest, _ = idx.GetNnsByItem(j, numReturn, int(numItems), batchContext)
 
 		for _, limit := range limits {
 
 			dur, topList := utils.MeasureWithReturn(func() []uint32 {
-				c, _ := idx.GetNnsByItem(j, limit, -1)
+				c, _ := idx.GetNnsByItem(j, limit, -1, batchContext)
 				return c
 			})
 
