@@ -163,7 +163,7 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 	if cnt < len(nns) {
 		nns_dist = bc.nns_dist[:cnt]
 	} else {
-		nns_dist = bc.nns_dist
+		nns_dist = bc.nns_dist[:len(nns)]
 	}
 
 	var p int

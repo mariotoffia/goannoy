@@ -1,17 +1,17 @@
 package utils
 
 import (
+	"sort"
+
 	"github.com/jfcg/sorty/v2"
 	"github.com/mariotoffia/goannoy/interfaces"
 )
 
 func SortSlice[TIX interfaces.IndexTypes](s []TIX) {
 	sorty.SortSlice(s)
-	/*
-		sort.Slice(s, func(i, j int) bool {
-			return s[i] < s[j]
-		})
-	*/
+	sort.Slice(s, func(i, j int) bool {
+		return s[i] < s[j]
+	})
 }
 
 func SortPairs[TV interfaces.VectorType, TIX interfaces.IndexTypes](
@@ -21,6 +21,7 @@ func SortPairs[TV interfaces.VectorType, TIX interfaces.IndexTypes](
 	/*sort.Slice(nns_dist, func(i, j int) bool {
 		return nns_dist[i].Less(nns_dist[j])
 	})*/
+
 	lsw := func(i, k, r, s int) bool {
 		if nns_dist[i].Less(nns_dist[k]) {
 			if r != s {
