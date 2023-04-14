@@ -7,11 +7,44 @@ import (
 	"github.com/mariotoffia/goannoy/utils"
 )
 
+// BatchContext is a context that is used when calling `GetNnsByVector` and
+// `GetNnsByItem`.
+type BatchContext[TV interfaces.VectorType, TIX interfaces.IndexTypes] struct {
+	nns      []TIX
+	nns_dist []*utils.Pair[TV, TIX]
+	length   int
+}
+
+// GetBatchContext will create a batch context, that should be used in subsequent
+// calls to `GetNnsByVector` and `GetNnsByItem`.
+func (idx *AnnoyIndexImpl[TV, TIX]) GetBatchContext() *BatchContext[TV, TIX] {
+	nnsLen := idx.batchMaxNNS
+	if nnsLen < 1 {
+		nnsLen = int(idx._n_nodes) * 2
+	}
+
+	bc := &BatchContext[TV, TIX]{
+		length:   nnsLen,
+		nns:      make([]TIX, nnsLen),
+		nns_dist: make([]*utils.Pair[TV, TIX], nnsLen),
+	}
+
+	for i := 0; i < nnsLen; i++ {
+		bc.nns_dist[i] = &utils.Pair[TV, TIX]{
+			First:  0,
+			Second: 0,
+		}
+	}
+
+	return bc
+}
+
 // GetNnsByItem will search for the closest vectors to the given _item_ in the index. When
 // _numReturn_ is -1, it will search number of trees in index * _numReturn_.
 func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByItem(
 	item TIX,
 	numReturn, numNodesToInspect int,
+	bc *BatchContext[TV, TIX],
 ) (result []TIX, distances []TV) {
 
 	node := idx.distance.MapNodeToMemory(
@@ -23,6 +56,7 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByItem(
 		node.GetVector(idx.vectorLength),
 		numReturn,
 		numNodesToInspect,
+		bc,
 	)
 }
 
@@ -31,6 +65,7 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByItem(
 func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 	vector []TV,
 	numReturn, numNodesToInspect int,
+	bc *BatchContext[TV, TIX],
 ) (result []TIX, distances []TV) {
 	q := utils.NewPriorityQueue[TV, TIX]()
 
@@ -42,9 +77,9 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 		q.Push(idx.distance.PQInitialValue(), idx._roots[i])
 	}
 
-	nns := make([]TIX, 0, idx._n_nodes*2)
+	cnt := 0
 
-	for len(nns) < numNodesToInspect && !q.Empty() {
+	for cnt < numNodesToInspect && !q.Empty() {
 		top := q.Top()
 
 		d := top.First
@@ -56,16 +91,17 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 		nDescendants := nd.GetNumberOfDescendants()
 
 		if nDescendants == 1 && i < idx._n_items {
-			nns = append(nns, i)
+			bc.nns[cnt] = i
+			cnt++
 		} else if nDescendants <= idx.maxDescendants {
 			dst := nd.GetChildren()
 			if len(dst) == int(nDescendants) {
-				nns = append(nns, dst...)
+				copy(bc.nns[TIX(cnt):], dst)
 			} else {
-				nns = append(nns, dst[:nDescendants]...)
+				copy(bc.nns[TIX(cnt):], dst[:nDescendants])
 			}
-
-		} else /*nDescendants > idx.maxDescendants*/ {
+			cnt += int(nDescendants)
+		} else {
 			// Node is normal of the split plane.
 			margin := idx.distance.Margin(nd, vector)
 			children := nd.GetChildren()
@@ -84,6 +120,7 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 
 	// Get distances for all items
 	// To avoid calculating distance multiple times for any items, sort by id
+	nns := bc.nns[:cnt]
 	utils.SortSlice(nns)
 
 	mem := make([]byte, idx.nodeSize) // Allocate mem on gcheap
@@ -95,13 +132,12 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 
 	idx.distance.InitNode(v_node)
 
-	nns_dist := make([]*utils.Pair[TV, TIX], len(nns))
-
 	var (
 		lastset bool
 		last    TIX
-		cnt     int
 	)
+
+	cnt = 0
 
 	for i := 0; i < len(nns); i++ {
 		j := nns[i]
@@ -115,17 +151,19 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 		if n.GetNumberOfDescendants() == 1 { // This is only to guard a really obscure case, #284
 			jn := idx.distance.MapNodeToMemory(idx._nodes, j)
 
-			nns_dist[cnt] = &utils.Pair[TV, TIX]{
-				First:  idx.distance.Distance(v_node, jn),
-				Second: j,
-			}
+			pair := bc.nns_dist[cnt]
+			pair.First = idx.distance.Distance(v_node, jn)
+			pair.Second = j
 
 			cnt++
 		}
 	}
 
+	var nns_dist []*utils.Pair[TV, TIX]
 	if cnt < len(nns) {
-		nns_dist = nns_dist[:cnt]
+		nns_dist = bc.nns_dist[:cnt]
+	} else {
+		nns_dist = bc.nns_dist[:len(nns)]
 	}
 
 	var p int

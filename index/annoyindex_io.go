@@ -96,11 +96,28 @@ func (idx *AnnoyIndexImpl[TV, TIX]) Load(fileName string) error {
 
 	if idx.logVerbose {
 		fmt.Println("Loaded index to from file", fileName, "with", idx._n_nodes, "nodes")
+	}
 
-		for i := TIX(0); i < idx._n_nodes; i++ {
-			n := idx.getNode(i)
-			fmt.Println(i, ": ", utils.DumpNode(idx.distance, n))
+	idx.batchMaxNNS = -1
+
+	for i := TIX(0); i < idx._n_nodes; i++ {
+		nd := idx.getNode(i)
+
+		nDescendants := nd.GetNumberOfDescendants()
+
+		if nDescendants == 1 && i < idx._n_items {
+			idx.batchMaxNNS++
+		} else if nDescendants <= idx.maxDescendants {
+			idx.batchMaxNNS += len(nd.GetChildren())
 		}
+
+		if idx.logVerbose {
+			fmt.Println(i, ": ", utils.DumpNode(idx.distance, nd))
+		}
+	}
+
+	if idx.logVerbose {
+		fmt.Println("Max NNS:", idx.batchMaxNNS)
 	}
 
 	return nil
