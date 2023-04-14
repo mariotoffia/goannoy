@@ -12,6 +12,7 @@ import (
 type BatchContext[TV interfaces.VectorType, TIX interfaces.IndexTypes] struct {
 	nns      []TIX
 	nns_dist []*utils.Pair[TV, TIX]
+	length   int
 }
 
 // GetBatchContext will create a batch context, that should be used in subsequent
@@ -23,6 +24,7 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetBatchContext() *BatchContext[TV, TIX] {
 	}
 
 	bc := &BatchContext[TV, TIX]{
+		length:   nnsLen,
 		nns:      make([]TIX, nnsLen),
 		nns_dist: make([]*utils.Pair[TV, TIX], nnsLen),
 	}
