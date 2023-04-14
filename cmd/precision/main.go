@@ -13,6 +13,7 @@ import (
 	"github.com/mariotoffia/goannoy/index/policy"
 	"github.com/mariotoffia/goannoy/random"
 	"github.com/mariotoffia/goannoy/utils"
+	"github.com/pkg/profile"
 )
 
 func main() {
@@ -26,6 +27,8 @@ func main() {
 	toFile := false
 	numReturn := 10
 	prec_n := 1000
+	cpuProfile := false
+	memProfile := false
 
 	flag.BoolVar(&toFile, "file", false, "Write output to file results.txt")
 	flag.BoolVar(&keepAnnFile, "keep", false, "Keep the .ann file")
@@ -33,8 +36,15 @@ func main() {
 	flag.IntVar(&numItems, "items", 1000, "Number of items to create")
 	flag.IntVar(&vectorLength, "length", 40, "Vector length")
 	flag.IntVar(&prec_n, "prec", 1000, "Number of items to test precision for")
+	flag.BoolVar(&cpuProfile, "cpu-profile", false, "Enable CPU profiling")
+	flag.BoolVar(&memProfile, "mem-profile", false, "Enable memory profiling")
 
 	flag.Parse()
+
+	if cpuProfile && memProfile {
+		fmt.Println("Cannot enable both CPU and memory profiling")
+		os.Exit(1)
+	}
 
 	var buffer io.Writer
 
@@ -138,6 +148,7 @@ func main() {
 	if justGenerate {
 		return
 	}
+
 	for i := 0; i < numItems; i++ {
 		v := vectors[i]
 		iv := idx.GetItemVector(uint32(i))
@@ -170,6 +181,22 @@ func main() {
 
 	// doing the work
 	batchContext := idx.GetBatchContext()
+
+	var profiler interface {
+		Stop()
+	}
+
+	if cpuProfile {
+		profiler = profile.Start(profile.CPUProfile)
+	} else if memProfile {
+		profiler = profile.Start(profile.MemProfile)
+	}
+
+	defer func() {
+		if profiler != nil {
+			profiler.Stop()
+		}
+	}()
 
 	for i := 0; i < prec_n; i++ {
 		// select a random node
