@@ -6,6 +6,51 @@ import (
 	"github.com/mariotoffia/goannoy/interfaces"
 )
 
+func PartialSortSlice[TV interfaces.VectorType, TIX interfaces.IndexTypes](
+	s []*Pair[TV, TIX],
+	begin, middle, end int,
+) {
+	if begin >= end || middle <= begin || middle >= end {
+		return
+	}
+
+	// Find the N smallest elements
+	N := middle - begin
+
+	if end-begin > 20 && end-begin < 5000000 {
+		// Use a heap
+		SortPairs(s)
+		return
+	}
+
+	for i := 0; i < N; i++ {
+		minIndex := begin + i
+
+		// Find the index of the smallest element in the unsorted part
+		for j := begin + i + 1; j < end; j++ {
+			if s[j].Less(s[minIndex]) {
+				minIndex = j
+			}
+		}
+
+		// Swap elements
+		if minIndex != begin+i {
+			s[begin+i], s[minIndex] = s[minIndex], s[begin+i]
+		}
+	}
+
+	// Sort sub-range [begin, middle)
+	if N > 15 {
+		SortPairs(s[begin:middle])
+	} else {
+		for i := begin + 1; i < middle; i++ {
+			for j := i; j > begin && s[j].Less(s[j-1]); j-- {
+				s[j], s[j-1] = s[j-1], s[j]
+			}
+		}
+	}
+}
+
 type pmnh[TV interfaces.VectorType, TIX interfaces.IndexTypes] struct {
 	indices []int
 	data    []*Pair[TV, TIX]
@@ -59,51 +104,6 @@ func PartialSortSlice2[TV interfaces.VectorType, TIX interfaces.IndexTypes](
 	for i := begin + 1; i < middle; i++ {
 		for j := i; j > begin && s[j].Less(s[j-1]); j-- {
 			s[j], s[j-1] = s[j-1], s[j]
-		}
-	}
-}
-
-func PartialSortSlice[TV interfaces.VectorType, TIX interfaces.IndexTypes](
-	s []*Pair[TV, TIX],
-	begin, middle, end int,
-) {
-	if begin >= end || middle <= begin || middle >= end {
-		return
-	}
-
-	// Find the N smallest elements
-	N := middle - begin
-
-	if end-begin > 20 && end-begin < 5000000 {
-		// Use a heap
-		SortPairs(s)
-		return
-	}
-
-	for i := 0; i < N; i++ {
-		minIndex := begin + i
-
-		// Find the index of the smallest element in the unsorted part
-		for j := begin + i + 1; j < end; j++ {
-			if s[j].Less(s[minIndex]) {
-				minIndex = j
-			}
-		}
-
-		// Swap elements
-		if minIndex != begin+i {
-			s[begin+i], s[minIndex] = s[minIndex], s[begin+i]
-		}
-	}
-
-	// Sort sub-range [begin, middle)
-	if N > 15 {
-		SortPairs(s[begin:middle])
-	} else {
-		for i := begin + 1; i < middle; i++ {
-			for j := i; j > begin && s[j].Less(s[j-1]); j-- {
-				s[j], s[j-1] = s[j-1], s[j]
-			}
 		}
 	}
 }
