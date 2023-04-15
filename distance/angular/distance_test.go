@@ -32,11 +32,11 @@ func TestGetNnsByVector(t *testing.T) {
 	ctx := idx.CreateContext()
 
 	result, _ := idx.GetNnsByVector([]float32{3, 2, 1}, 3, -1, ctx)
-	assert.Equal(t, []int{2, 1, 0}, result)
+	assert.Equal(t, []uint32{2, 1, 0}, result)
 
 	result, _ = idx.GetNnsByVector([]float32{1, 2, 3}, 3, -1, ctx)
-	assert.Equal(t, []int{0, 1, 2}, result)
+	assert.Equal(t, []uint32{0, 1, 2}, result)
 
 	result, _ = idx.GetNnsByVector([]float32{2, 0, 1}, 3, -1, ctx)
-	assert.Equal(t, []int{2, 0, 1}, result)
+	assert.Equal(t, []uint32{2, 0, 1}, result)
 }

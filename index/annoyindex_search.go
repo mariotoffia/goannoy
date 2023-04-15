@@ -126,10 +126,13 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 
 	mem := make([]byte, idx.nodeSize) // Allocate mem on gcheap
 
+	// Prepare node to search for
 	v_node := idx.distance.MapNodeToMemory(
 		unsafe.Pointer(unsafe.SliceData(mem)),
 		0,
 	)
+
+	v_node.SetVector(vector)
 
 	idx.distance.InitNode(v_node)
 
