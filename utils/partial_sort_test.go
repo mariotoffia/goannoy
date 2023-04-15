@@ -39,13 +39,56 @@ func TestCorrectness(t *testing.T) {
 	assert.True(t, contains(s, 10))
 }
 
+func TestCorrectness2(t *testing.T) {
+	var s = []*Pair[float32, uint32]{
+		{10, 10},
+		{6, 6},
+		{7, 7},
+		{8, 8},
+		{5, 5},
+		{1, 1},
+	}
+
+	PartialSortSlice2(s, 0, 3, len(s))
+
+	assert.Equal(t, 6, len(s))
+	assert.Equal(t, 1, int(s[0].First))
+	assert.Equal(t, 5, int(s[1].First))
+	assert.Equal(t, 6, int(s[2].First))
+
+	contains := func(s []*Pair[float32, uint32], v float32) bool {
+		for _, e := range s {
+			if e.First == v {
+				return true
+			}
+		}
+		return false
+	}
+
+	assert.True(t, contains(s, 7))
+	assert.True(t, contains(s, 8))
+	assert.True(t, contains(s, 10))
+}
+
 func BenchmarkPartialSort(t *testing.B) {
 	testSet := createData(uint32(1000000))
 	N := len(testSet)
 
-	t.Run(fmt.Sprintf("Partial/%d", 1), func(t *testing.B) {
+	t.Run("Partial", func(t *testing.B) {
 		for i := 0; i < t.N; i++ {
 			PartialSortSlice(testSet, 0, 10, N)
+		}
+	})
+
+	t.Run("Partial2", func(t *testing.B) {
+		for i := 0; i < t.N; i++ {
+			PartialSortSlice2(testSet, 0, 10, N)
+		}
+	})
+
+	t.Run("Sort", func(t *testing.B) {
+		for i := 0; i < t.N; i++ {
+			SortPairs(testSet)
 		}
 	})
 }
