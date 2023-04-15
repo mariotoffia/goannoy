@@ -3,14 +3,15 @@ package utils
 import (
 	"sort"
 
+	"github.com/jfcg/sorty/v2"
 	"github.com/mariotoffia/goannoy/interfaces"
 )
 
 func SortSlice[TIX interfaces.IndexTypes](slice []TIX) {
-	sort.Slice(slice, func(i, j int) bool {
+	/*sort.Slice(slice, func(i, j int) bool {
 		return slice[i] < slice[j]
-	})
-	//sorty.SortSlice(slice)
+	})*/
+	sorty.SortSlice(slice)
 }
 
 func SortPairs[TV interfaces.VectorType, TIX interfaces.IndexTypes](
