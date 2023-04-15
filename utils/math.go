@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"math"
+
 	"github.com/mariotoffia/goannoy/interfaces"
 )
 
@@ -39,4 +41,13 @@ func Intersection[TIX interfaces.IndexTypes](a, b []TIX) []TIX {
 	}
 
 	return intersection[:k]
+}
+
+func Round(f float64) float64 {
+	return math.Floor(f + 0.5)
+}
+
+func RoundPlus(f float64, places int) float64 {
+	shift := math.Pow(10, float64(places))
+	return Round(f*shift) / shift
 }

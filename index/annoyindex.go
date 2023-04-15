@@ -132,11 +132,7 @@ func (idx *AnnoyIndexImpl[TV, TIX]) VectorLength() TIX {
 	return idx.vectorLength
 }
 
-func (idx *AnnoyIndexImpl[TV, TIX]) GetVector(itemIndex TIX) []TV {
-	if !idx.indexLoaded {
-		panic("Can't get items from an unloaded index")
-	}
-
+func (idx *AnnoyIndexImpl[TV, TIX]) GetItem(itemIndex TIX) []TV {
 	return idx.getNode(itemIndex).GetVector(idx.vectorLength)
 }
 

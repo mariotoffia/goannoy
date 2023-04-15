@@ -15,7 +15,8 @@ type AnnoyIndex[TV VectorType, TIX IndexTypes] interface {
 	io.Closer
 	// VectorLength returns the vector length of the index.
 	VectorLength() TIX
-	GetVector(itemIndex TIX) []TV
+	// GetItem returns the vector of the given _itemIndex_.
+	GetItem(itemIndex TIX) []TV
 	// AddItem adds an item to the index. The ownership of the vector _v_ is taken
 	// by this function. The _itemIndex_ is a numbering index of the _v_ vector and
 	// *SHOULD* be incremental. If same _itemIndex_ is added twice, the last one
