@@ -162,7 +162,7 @@ func main() {
 
 	for i := 0; i < numItems; i++ {
 		v := vectors[i]
-		iv := idx.GetItemVector(uint32(i))
+		iv := idx.GetVector(uint32(i))
 
 		// Compare vectors
 		for j := uint32(0); j < uint32(vectorLength); j++ {
@@ -191,7 +191,7 @@ func main() {
 	}
 
 	// doing the work
-	batchContext := idx.GetBatchContext()
+	batchContext := idx.CreateContext()
 
 	var profiler interface {
 		Stop()

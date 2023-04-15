@@ -118,7 +118,7 @@ func TestPrecision(t *testing.T) {
 
 	for i := uint32(0); i < numItems; i++ {
 		v := vectors[i]
-		iv := idx.GetItemVector(i)
+		iv := idx.GetVector(i)
 
 		// Compare vectors
 		for j := uint32(0); j < vectorLength; j++ {
@@ -149,7 +149,7 @@ func TestPrecision(t *testing.T) {
 	}
 
 	// doing the work
-	batchContext := idx.GetBatchContext()
+	batchContext := idx.CreateContext()
 
 	for i := 0; i < prec_n; i++ {
 		// select a random node

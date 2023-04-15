@@ -132,7 +132,7 @@ func (idx *AnnoyIndexImpl[TV, TIX]) VectorLength() TIX {
 	return idx.vectorLength
 }
 
-func (idx *AnnoyIndexImpl[TV, TIX]) GetItemVector(itemIndex TIX) []TV {
+func (idx *AnnoyIndexImpl[TV, TIX]) GetVector(itemIndex TIX) []TV {
 	if !idx.indexLoaded {
 		panic("Can't get items from an unloaded index")
 	}
@@ -140,10 +140,6 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetItemVector(itemIndex TIX) []TV {
 	return idx.getNode(itemIndex).GetVector(idx.vectorLength)
 }
 
-// AddItem adds an item to the index. The ownership of the vector _v_ is taken
-// by this function. The _itemIndex_ is a numbering index of the _v_ vector and
-// *SHOULD* be incremental. If same _itemIndex_ is added twice, the last one
-// will be the one in the index.
 func (idx *AnnoyIndexImpl[TV, TIX]) AddItem(itemIndex TIX, v []TV) {
 	if idx.indexLoaded {
 		panic("Can't add items to a loaded index")
@@ -172,14 +168,6 @@ func (idx *AnnoyIndexImpl[TV, TIX]) AddItem(itemIndex TIX, v []TV) {
 	}
 }
 
-// Build will build a a new index. The _numberOfTrees_ is the number of trees
-// to build. The _numWorkers_ is the number of workers to use when building
-// the index. If _numWorkers_ is -1, the number of workers will be set to the
-// number of CPU cores. If _numWorkers_ is 0, the number of workers will be
-// set to 1. Hence, run on current goroutine.
-//
-// The _numberOfTrees_ will be split amongst the workers. The more number
-// of trees, the larger the index. But it also will be more precise.
 func (idx *AnnoyIndexImpl[TV, TIX]) Build(numberOfTrees, numWorkers int) {
 	if idx.indexLoaded {
 		panic("Can't build a loaded index")
@@ -215,6 +203,24 @@ func (idx *AnnoyIndexImpl[TV, TIX]) Build(numberOfTrees, numWorkers int) {
 
 	idx._n_nodes += TIX(len(idx._roots))
 	idx.indexBuilt = true
+
+	idx.batchMaxNNS = -1
+
+	for i := TIX(0); i < idx._n_nodes; i++ {
+		nd := idx.getNode(i)
+
+		nDescendants := nd.GetNumberOfDescendants()
+
+		if nDescendants == 1 && i < idx._n_items {
+			idx.batchMaxNNS++
+		} else if nDescendants <= idx.maxDescendants {
+			idx.batchMaxNNS += len(nd.GetChildren())
+		}
+	}
+
+	if idx.logVerbose {
+		fmt.Println("Max NNS:", idx.batchMaxNNS)
+	}
 }
 
 // ThreadBuild is called from the build policy to build the index.

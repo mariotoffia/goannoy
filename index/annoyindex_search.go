@@ -15,9 +15,9 @@ type BatchContext[TV interfaces.VectorType, TIX interfaces.IndexTypes] struct {
 	length   int
 }
 
-// GetBatchContext will create a batch context, that should be used in subsequent
+// CreateContext will create a batch context, that should be used in subsequent
 // calls to `GetNnsByVector` and `GetNnsByItem`.
-func (idx *AnnoyIndexImpl[TV, TIX]) GetBatchContext() *BatchContext[TV, TIX] {
+func (idx *AnnoyIndexImpl[TV, TIX]) CreateContext() interfaces.AnnoyIndexContext[TV, TIX] {
 	nnsLen := idx.batchMaxNNS
 	if nnsLen < 1 {
 		nnsLen = int(idx._n_nodes) * 2
@@ -44,7 +44,7 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetBatchContext() *BatchContext[TV, TIX] {
 func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByItem(
 	item TIX,
 	numReturn, numNodesToInspect int,
-	bc *BatchContext[TV, TIX],
+	ctx interfaces.AnnoyIndexContext[TV, TIX],
 ) (result []TIX, distances []TV) {
 
 	node := idx.distance.MapNodeToMemory(
@@ -56,7 +56,7 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByItem(
 		node.GetVector(idx.vectorLength),
 		numReturn,
 		numNodesToInspect,
-		bc,
+		ctx,
 	)
 }
 
@@ -65,8 +65,9 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByItem(
 func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 	vector []TV,
 	numReturn, numNodesToInspect int,
-	bc *BatchContext[TV, TIX],
+	ctx interfaces.AnnoyIndexContext[TV, TIX],
 ) (result []TIX, distances []TV) {
+	bc := ctx.(*BatchContext[TV, TIX])
 	q := utils.NewPriorityQueue[TV, TIX]()
 
 	if numNodesToInspect == -1 {
@@ -166,17 +167,17 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 		nns_dist = bc.nns_dist[:len(nns)]
 	}
 
-	var p int
+	var middle int
 	if numReturn < cnt {
-		p = numReturn
+		middle = numReturn
 	} else {
-		p = cnt
+		middle = cnt
 	}
 
 	// Inefficient since it will sort the whole slice!
-	utils.SortPairs(nns_dist)
+	utils.PartialSortSlice(nns_dist, 0, middle, len(nns_dist))
 
-	nns_dist_partial := nns_dist[:p]
+	nns_dist_partial := nns_dist[:middle]
 
 	for i := 0; i < len(nns_dist_partial); i++ {
 		distances = append(distances, nns_dist_partial[i].First)
