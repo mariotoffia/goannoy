@@ -14,6 +14,24 @@ func (p *Pair[T, S]) Less(other *Pair[T, S]) bool {
 
 type Pairs[T constraints.Ordered, S constraints.Ordered] []*Pair[T, S]
 
+func (pq Pairs[TV, TIX]) ContainsFirst(v TV) bool {
+	for _, e := range pq {
+		if e.First == v {
+			return true
+		}
+	}
+	return false
+}
+
+func (pq Pairs[TV, TIX]) ContainsSecond(v TIX) bool {
+	for _, e := range pq {
+		if e.Second == v {
+			return true
+		}
+	}
+	return false
+}
+
 func (pq Pairs[_, _]) Len() int {
 	return len(pq)
 }

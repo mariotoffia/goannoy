@@ -10,7 +10,7 @@ func PartialSortSlice[TV interfaces.VectorType, TIX interfaces.IndexTypes](
 	s []*Pair[TV, TIX],
 	begin, middle, end int,
 ) {
-	if begin >= end || middle <= begin || middle >= end {
+	if begin >= end || middle <= begin || middle > end {
 		return
 	}
 
