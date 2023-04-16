@@ -7,7 +7,7 @@ Approximate Nearest Neighbors in golang optimized for memory usage and loading/s
 idx := index.NewAnnoyIndexImpl[float32, uint32](
 		uint32(vectorLength),
 		random.NewKiss32Random(uint32(0)),
-		Distance[float32](uint32(3)),
+		angular.Distance[float32](uint32(3)),
 		policy.MultiWorker(),
 		memory.IndexMemoryAllocator(),
 		memory.MmapIndexAllocator(),
