@@ -1,7 +1,17 @@
 # goannoy
-Approximate Nearest Neighbors in golang optimized for memory usage and loading/saving to disk. This is a complete port and do **not** rely on cgo or other interop with c++ code.
 
-:bulb: To get started
+GoAnnoy is an efficient Approximate Nearest Neighbors library for Go, optimized for memory usage and fast loading/saving to disk. This is a complete, standalone port that does not rely on cgo or other interop with C++ code. GoAnnoy is inspired by the Spotify's [Annoy](https://github.com/spotify/annoy) library.
+
+## Key Features
+
+* Memory-efficient nearest neighbor search
+* Fast disk loading and saving
+* Standalone Go implementation, no need for cgo or C++ dependencies
+* Supports custom distance functions and indexing policies
+* Pluggable memory, file allocators
+
+## Getting started
+
 ```go
 // Create a annoy index and configure it
 idx := index.NewAnnoyIndexImpl[float32, uint32](
@@ -15,7 +25,7 @@ idx := index.NewAnnoyIndexImpl[float32, uint32](
 		0,
 	)
 
-// Add some vectors and build the tree
+// Add some vectors and build the index
 idx.AddItem(0, []float32{0, 0, 1})
 idx.AddItem(1, []float32{0, 1, 0})
 idx.AddItem(2, []float32{1, 0, 0})
