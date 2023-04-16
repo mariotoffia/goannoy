@@ -5,9 +5,9 @@ Approximate Nearest Neighbors in golang optimized for memory usage and loading/s
 ```go
 // Create a annoy index and configure it
 idx := index.NewAnnoyIndexImpl[float32, uint32](
-		uint32(vectorLength),
+		vectorLength,
 		random.NewKiss32Random(uint32(0)),
-		angular.Distance[float32](uint32(3)),
+		angular.Distance[float32](vectorLength),
 		policy.MultiWorker(),
 		memory.IndexMemoryAllocator(),
 		memory.MmapIndexAllocator(),
