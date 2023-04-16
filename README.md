@@ -48,6 +48,40 @@ idx.Load("test.ann")
 // and more...
 ```
 
+## Testing using Command
+
+Use the `go run cmd/precision/main.go` to test a few aspects of indexing and querying the vector index. It supports the following command line parameters:
+
+```bash
+Usage of precision:
+  -cpu-profile
+    	Enable CPU profiling
+  -file
+    	Write output to file results.txt
+  -items int
+    	Number of items to create (default 1000)
+  -keep
+    	Keep the .ann file
+  -length int
+    	Vector length (default 40)
+  -mem-profile
+    	Enable memory profiling (go tool pprof /path/to/profile)
+  -prec int
+    	Number of items to test precision for (default 1000)
+  -use-memory-index-allocator
+    	Use memory index allocator (default is mmap)
+  -verbose
+    	Verbose output
+```
+
+for example use the following:
+
+```bash
+go run cmd/precision/main.go -file -items 10000 -prec 1000
+```
+
+to generate *10_000* indexes and search the index. A *results.txt* in current directory is created with performance stats.
+
 ## Credits
 
 This is a port of the Spotify https://github.com/spotify/annoy - all kudos goes to them! :)
