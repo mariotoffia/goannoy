@@ -181,11 +181,11 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 	// Inefficient since it will sort the whole slice!
 	utils.PartialSortSlice(nns_dist, 0, middle, len(nns_dist))
 
-	nns_dist_partial := nns_dist[:middle]
+	//nns_dist_partial := nns_dist[:middle]
 
-	for i := 0; i < len(nns_dist_partial); i++ {
-		distances = append(distances, nns_dist_partial[i].First)
-		result = append(result, nns_dist_partial[i].Second)
+	for i := 0; i < middle; i++ {
+		distances = append(distances, nns_dist[i].First)
+		result = append(result, nns_dist[i].Second)
 	}
 
 	return

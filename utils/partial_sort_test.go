@@ -66,6 +66,20 @@ func TestCorrectnessBug(t *testing.T) {
 	assert.Equal(t, float32(2), s[2].First)
 }
 
+func TestCorrectnessBug2(t *testing.T) {
+	var s = []*Pair[float32, uint32]{
+		{1.1055728, 0},
+		{2, 1},
+		{
+			0.21114564, 2},
+	}
+
+	PartialSortSlice2(s, 0, 3, len(s))
+	assert.Equal(t, float32(0.21114564), s[0].First)
+	assert.Equal(t, float32(1.1055728), s[1].First)
+	assert.Equal(t, float32(2), s[2].First)
+}
+
 func BenchmarkPartialSort(t *testing.B) {
 	testSet := createData(uint32(1000000))
 	N := len(testSet)

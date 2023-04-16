@@ -18,7 +18,6 @@ func PartialSortSlice[TV interfaces.VectorType, TIX interfaces.IndexTypes](
 	N := middle - begin
 
 	if end-begin > 20 && end-begin < 5000000 {
-		// Use a heap
 		SortPairs(s)
 		return
 	}
@@ -77,7 +76,7 @@ func PartialSortSlice2[TV interfaces.VectorType, TIX interfaces.IndexTypes](
 	s []*Pair[TV, TIX],
 	begin, middle, end int,
 ) {
-	if begin >= end || middle <= begin || middle >= end {
+	if begin >= end || middle <= begin || middle > end {
 		return
 	}
 
