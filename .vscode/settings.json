@@ -15,6 +15,7 @@
     "Marsaglia",
     "Memcpy",
     "Minkowski",
+    "Mmap",
     "mset",
     "origo",
     "pmnh",
