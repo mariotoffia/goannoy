@@ -49,7 +49,7 @@ type AnnoyIndexImpl[
 	indexMemory          interfaces.IndexMemory
 }
 
-// NewAnnoyIndexImpl create a new index instance based on the _TV_ for the vector
+// New create a new index instance based on the _TV_ for the vector
 // and _TIX_ for the index type. When done use the `io.Closer.Close()` to clean up
 // any resources.
 //
@@ -69,7 +69,7 @@ type AnnoyIndexImpl[
 //
 // Use `AddIndex` and when done, `Build` to build the index. `Save` the index, and thus is then
 // ready to be used for lookups.
-func NewAnnoyIndexImpl[
+func New[
 	TV interfaces.VectorType,
 	TIX interfaces.IndexTypes](
 	random interfaces.Random[TIX],
@@ -79,7 +79,7 @@ func NewAnnoyIndexImpl[
 	indexMemoryAllocator interfaces.IndexMemoryAllocator,
 	logVerbose bool,
 	hintNumIndexes TIX,
-) *AnnoyIndexImpl[TV, TIX] {
+) interfaces.AnnoyIndex[TV, TIX] {
 	//
 	index := &AnnoyIndexImpl[TV, TIX]{
 		vectorLength:         distance.VectorLength(),   // _f

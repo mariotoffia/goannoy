@@ -67,7 +67,7 @@ func main() {
 		indexMemoryAllocator = memory.MmapIndexAllocator()
 	}
 
-	idx := index.NewAnnoyIndexImpl[float32, uint32](
+	idx := index.New[float32, uint32](
 		rnd,
 		angular.Distance[float32](uint32(vectorLength)),
 		policy.MultiWorker(),

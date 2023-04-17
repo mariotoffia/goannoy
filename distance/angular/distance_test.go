@@ -6,12 +6,13 @@ import (
 	"github.com/mariotoffia/goannoy/index"
 	"github.com/mariotoffia/goannoy/index/memory"
 	"github.com/mariotoffia/goannoy/index/policy"
+	"github.com/mariotoffia/goannoy/interfaces"
 	"github.com/mariotoffia/goannoy/random"
 	"github.com/stretchr/testify/assert"
 )
 
-func createIndex(vectorLength int) *index.AnnoyIndexImpl[float32, uint32] {
-	return index.NewAnnoyIndexImpl[float32, uint32](
+func createIndex(vectorLength int) interfaces.AnnoyIndex[float32, uint32] {
+	return index.New[float32, uint32](
 		random.NewKiss32Random(uint32(0)),
 		Distance[float32](uint32(vectorLength)),
 		policy.SingleWorker(),
