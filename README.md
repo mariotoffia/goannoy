@@ -1,13 +1,13 @@
 # goannoy
 
-GoAnnoy is an efficient Approximate Nearest Neighbors library for Go, optimized for memory usage and fast loading/saving to disk. This is a complete, standalone port that does not rely on cgo or other interop with C++ code. GoAnnoy is inspired by the Spotify's [Annoy](https://github.com/spotify/annoy) library.
+GoAnnoy is an efficient Approximate Nearest Neighbors library for Go, optimized for memory usage and fast loading/saving to disk. This is a complete, standalone port that does not rely on cgo or other interop with C++ code. GoAnnoy is a port of the Spotify's [Annoy](https://github.com/spotify/annoy) library.
 
 ## Key Features
 
-* Memory-efficient nearest neighbor search
+* Memory-efficient nearest neighbor search (using `unsafe` to handle unions, variable vector length and do continious memory mapping)
 * Fast disk loading and saving
 * Standalone Go implementation, no need for cgo or C++ dependencies
-* Supports custom distance functions and indexing policies
+* Supports custom distance functions and indexing policies (e.g. multi-threaded)
 * Pluggable memory, file allocators
 
 ## Getting started
@@ -41,11 +41,9 @@ assert.Equal(t, []uint32{2, 1, 0}, result)
 idx.Save("test.ann")
 
 // Load it back at a later point in time and start searching.
-//
-// NOTE: It is possible to share the index with many processes.
 idx.Load("test.ann")
 
-// and more...
+// ...
 ```
 
 ## Testing using Command
@@ -74,13 +72,11 @@ Usage of precision:
     	Verbose output
 ```
 
-for example use the following:
-
+For example use the following:
 ```bash
 go run cmd/precision/main.go -file -items 10000 -prec 1000
 ```
-
-to generate *10_000* indexes and search the index. A *results.txt* in current directory is created with performance stats.
+will generate *10_000* indexes and search the index. A *results.txt* in current directory is created with performance stats.
 
 ## Credits
 
