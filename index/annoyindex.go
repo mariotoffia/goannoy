@@ -72,7 +72,6 @@ type AnnoyIndexImpl[
 func NewAnnoyIndexImpl[
 	TV interfaces.VectorType,
 	TIX interfaces.IndexTypes](
-	vectorLength TIX,
 	random interfaces.Random[TIX],
 	distance interfaces.Distance[TV, TIX],
 	buildPolicy interfaces.AnnoyIndexBuildPolicy,
@@ -83,7 +82,7 @@ func NewAnnoyIndexImpl[
 ) *AnnoyIndexImpl[TV, TIX] {
 	//
 	index := &AnnoyIndexImpl[TV, TIX]{
-		vectorLength:         vectorLength,              // _f
+		vectorLength:         distance.VectorLength(),   // _f
 		random:               random,                    // _seed
 		nodeSize:             distance.NodeSize(),       // _s
 		maxDescendants:       distance.MaxNumChildren(), // _K

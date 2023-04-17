@@ -68,7 +68,6 @@ func main() {
 	}
 
 	idx := index.NewAnnoyIndexImpl[float32, uint32](
-		uint32(vectorLength),
 		rnd,
 		angular.Distance[float32](uint32(vectorLength)),
 		policy.MultiWorker(),

@@ -31,7 +31,6 @@ func TestPrecision(t *testing.T) {
 	rnd := random.NewKiss32Random(uint32(0) /*default seed*/)
 
 	idx := index.NewAnnoyIndexImpl[float32, uint32](
-		vectorLength,
 		rnd,
 		angular.Distance[float32](vectorLength),
 		policy.MultiWorker(),

@@ -54,6 +54,6 @@ type Distance[TV VectorType, TIX IndexTypes] interface {
 	// NodeSize is the size of the allocated memory for the node. Each node occupy the same
 	// amount of memory.
 	NodeSize() TIX
-	// VectorLength is the length of the vector the node will hold.
+	// VectorLength is the length of the vector the this distance operates on.
 	VectorLength() TIX
 }

@@ -12,9 +12,8 @@ import (
 
 func createIndex(vectorLength int) *index.AnnoyIndexImpl[float32, uint32] {
 	return index.NewAnnoyIndexImpl[float32, uint32](
-		uint32(vectorLength),
 		random.NewKiss32Random(uint32(0)),
-		Distance[float32](uint32(3)),
+		Distance[float32](uint32(vectorLength)),
 		policy.SingleWorker(),
 		memory.IndexMemoryAllocator(),
 		memory.MmapIndexAllocator(),
