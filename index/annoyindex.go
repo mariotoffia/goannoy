@@ -140,6 +140,10 @@ func (idx *AnnoyIndexImpl[TV, TIX]) AddItem(itemIndex TIX, v []TV) {
 		panic("Can't add items to a loaded index")
 	}
 
+	if idx.vectorLength != TIX(len(v)) {
+		panic(fmt.Sprintf("Vector length mismatch: %d != %d", idx.vectorLength, len(v)))
+	}
+
 	// Ensure that we have enough memory for the new node
 	idx.allocateSize(itemIndex+1, nil)
 
