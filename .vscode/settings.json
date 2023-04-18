@@ -1,5 +1,6 @@
 {
   "go.testTimeout": "360s",
+  "go.buildTags": "neon",
   "cSpell.words": [
     "alloc",
     "amath",
@@ -9,6 +10,7 @@
     "gcheap",
     "goannoy",
     "iface",
+    "immintrin",
     "indexpolicy",
     "jfcg",
     "lastset",
@@ -18,6 +20,7 @@
     "Minkowski",
     "Mmap",
     "mset",
+    "noescape",
     "origo",
     "Pluggable",
     "pmnh",

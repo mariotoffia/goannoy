@@ -11,11 +11,19 @@ COVERAGE_FILE := "coverage.out"
 
 all: build_shell test lint
 
-build: build_shell
+build: build_precision
 
-build_shell:
-	@echo "Building $(PROJECT_NAME) shell command..."
-	@go build -o $(BUILD_DIR)/$(PROJECT_NAME) $(CMD_SHELL)
+build_precision:
+	@echo "Building $(PROJECT_NAME) precision command..."
+ifeq ($(HW_SUPPORT), avx256)
+	go build -tags avx256 -o $(BUILD_DIR)/$(PROJECT_NAME)-precision ./cmd/precision
+else ifeq ($(HW_SUPPORT), avx512)
+	go build -tags avx512 -o $(BUILD_DIR)/$(PROJECT_NAME)-precision ./cmd/precision
+else ifeq ($(HW_SUPPORT), neon)
+	go build -tags neon -o $(BUILD_DIR)/$(PROJECT_NAME)-precision ./cmd/precision
+else
+	go build -o $(BUILD_DIR)/$(PROJECT_NAME)-precision ./cmd/precision
+endif	
 
 test:
 	@echo "Running tests with timeout $(TEST_TIMEOUT) and generating coverage..."
