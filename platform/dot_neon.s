@@ -4,34 +4,27 @@
 
 #include "textflag.h"
 
-// func DotProduct(v1, v2 *float32, length int) float32
-TEXT ·neonDotProductF32(SB), NOSPLIT, $0-28
-    MOVD R0, R0   // Load the first vector pointer (v1) into x0
-    MOVD R1, R1   // Load the second vector pointer (v2) into x1
-    MOVD R2, R2   // Load the vector length into w2
+// func ·neonDotProductF32(v1, v2 *float32, vectorLength uint32) float32
+TEXT ·neonDotProductF32(SB),$0-20
+    MOV  v1.ptr(R0), X4       // X4 holds the pointer to v1
+    MOV  v2.ptr(R1), X5       // X5 holds the pointer to v2
+    MOV  vectorLength(R2), W3  // W3 holds the length of vectors
 
-    FMOVS F0, ZR // Initialize the result (dot product) to 0
+    MOVZ $0x0, W0              // W0 holds the index i
+    FMOV ZR, S2                // S2 holds the dot product result
 
-    // Neon loop
-    CBZ R2, done
 loop:
-    MOVD.P 16(R0), V1 // Load 4 float32 values from v1
-    MOVD.P 16(R1), V2 // Load 4 float32 values from v2
+    CMP W0, W3
+    BGE done
 
-    FMULS V3.S[0], V1.S[0], V2.S[0] // Multiply v1 and v2 element-wise
-    FMULS V3.S[1], V1.S[1], V2.S[1]
-    FMULS V3.S[2], V1.S[2], V2.S[2]
-    FMULS V3.S[3], V1.S[3], V2.S[3]
+    LDR S0, (X4)(W0*4)         // Load v1[i] into S0
+    LDR S1, (X5)(W0*4)         // Load v2[i] into S1
+    FMUL S0, S1, S0            // Multiply v1[i] * v2[i]
+    FADD S2, S0, S2            // Add the result to the dot product: dotProduct += v1[i] * v2[i]
 
-    FADDS F1, V3.S[0], V3.S[1]
-    FADDS F1, F1, V3.S[2]
-    FADDS F1, F1, V3.S[3]
-
-    FADDS F0, F0, F1          // Add the sum to the result (dot product)
-
-    SUBS R2, R2, $4          // Decrement the length by 4
-    BGT loop                 // Continue loop if there are more elements
+    ADD W0, W0, $1             // Increment the index i
+    B   loop                   // Jump back to the loop
 
 done:
-    FMOVS F0, F0 // Return the result (dot product) in f0
-    RET         // Return
+    FMOV F0, S2                // Return the dot product result in F0
+    RET

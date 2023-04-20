@@ -1,6 +1,6 @@
 {
   "go.testTimeout": "360s",
-  "go.buildTags": "neon",
+  "go.buildTags": "",
   "cSpell.words": [
     "alloc",
     "amath",
@@ -9,6 +9,7 @@
     "datapoint",
     "gcheap",
     "goannoy",
+    "Heapify",
     "iface",
     "immintrin",
     "indexpolicy",

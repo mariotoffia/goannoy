@@ -8,8 +8,8 @@ func init() {
 }
 
 //go:noescape
-func neonDotProductF32(v1, v2 *float32, length int) float32
+func neonDotProductF32(v1, v2 *float32, length uint32) float32
 
 func dotF32Neon(x, y *float32, vectorLength uint32) float32 {
-	return neonDotProductF32(x, y, int(vectorLength))
+	return neonDotProductF32(x, y, vectorLength)
 }

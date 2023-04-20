@@ -1,13 +1,12 @@
 package utils
 
 import (
-	"container/heap"
-
 	"github.com/mariotoffia/goannoy/interfaces"
+	"golang.org/x/exp/constraints"
 )
 
 func PartialSortSlice[TV interfaces.VectorType, TIX interfaces.IndexTypes](
-	s []*Pair[TV, TIX],
+	s Pairs[TV, TIX],
 	begin, middle, end int,
 ) {
 	if begin >= end || middle <= begin || middle > end {
@@ -50,59 +49,87 @@ func PartialSortSlice[TV interfaces.VectorType, TIX interfaces.IndexTypes](
 	}
 }
 
-type pmnh[TV interfaces.VectorType, TIX interfaces.IndexTypes] struct {
-	indices []int
-	data    []*Pair[TV, TIX]
-}
-
-func (h pmnh[_, _]) Len() int           { return len(h.indices) }
-func (h pmnh[_, _]) Less(i, j int) bool { return !h.data[h.indices[i]].Less(h.data[h.indices[j]]) }
-func (h pmnh[_, _]) Swap(i, j int)      { h.indices[i], h.indices[j] = h.indices[j], h.indices[i] }
-func (h *pmnh[TV, TIX]) Push(x interface{}) {
-	*h = pmnh[TV, TIX]{
-		indices: append(h.indices, x.(int)),
-		data:    h.data,
-	}
-}
-func (h *pmnh[_, _]) Pop() interface{} {
-	old := h.indices
-	n := len(old)
-	x := old[n-1]
-	h.indices = old[:n-1]
-	return x
-}
-
 func PartialSortSlice2[TV interfaces.VectorType, TIX interfaces.IndexTypes](
-	s []*Pair[TV, TIX],
+	s Pairs[TV, TIX],
 	begin, middle, end int,
 ) {
+	beginMiddle := middle - begin
+
+	if beginMiddle >= s.Len() {
+		SortPairs(s)
+		return
+	}
+
 	if begin >= end || middle <= begin || middle > end {
 		return
 	}
 
-	// Find the N smallest elements using a binary heap
-	N := middle - begin
-	h := pmnh[TV, TIX]{indices: make([]int, N), data: s}
-	for i := 0; i < N; i++ {
-		h.indices[i] = i + begin
-	}
-	heap.Init(&h)
-	for i := N; i < end-begin; i++ {
-		if s[begin+i].Less(s[h.indices[0]]) {
-			h.indices[0] = i + begin
-			heap.Fix(&h, 0)
+	buildMaxHeap(s[begin:middle], beginMiddle)
+
+	for i := middle; i < end; i++ {
+		if s.Less(i, begin) {
+			s.Swap(begin, i)
+			maxHeapify(s[begin:middle], 0, beginMiddle)
 		}
 	}
 
-	// Swap elements
-	for i := 0; i < N; i++ {
-		s[begin+i], s[h.indices[i]-begin] = s[h.indices[i]-begin], s[begin+i]
+	heapSort(s[begin:middle])
+
+}
+
+func heapify[T, S constraints.Ordered](arr Pairs[T, S], n, i int) {
+	largest := i
+	left := 2*i + 1
+	right := 2*i + 2
+
+	if left < n && arr.Less(largest, left) {
+		largest = left
 	}
 
-	// Sort sub-range [begin, middle) in place
-	for i := begin + 1; i < middle; i++ {
-		for j := i; j > begin && s[j].Less(s[j-1]); j-- {
-			s[j], s[j-1] = s[j-1], s[j]
-		}
+	if right < n && arr.Less(largest, right) {
+		largest = right
+	}
+
+	if largest != i {
+		arr.Swap(i, largest)
+		heapify(arr, n, largest)
+	}
+}
+
+func heapSort[T, S constraints.Ordered](arr Pairs[T, S]) {
+	n := arr.Len()
+
+	for i := n/2 - 1; i >= 0; i-- {
+		heapify(arr, n, i)
+	}
+
+	for i := n - 1; i >= 0; i-- {
+		arr.Swap(0, i)
+		heapify(arr, i, 0)
+	}
+}
+
+func buildMaxHeap[T, S constraints.Ordered](arr Pairs[T, S], n int) {
+	for i := n/2 - 1; i >= 0; i-- {
+		maxHeapify(arr, i, n)
+	}
+}
+
+func maxHeapify[T, S constraints.Ordered](arr Pairs[T, S], i, n int) {
+	largest := i
+	left := 2*i + 1
+	right := 2*i + 2
+
+	if left < n && arr.Less(largest, left) {
+		largest = left
+	}
+
+	if right < n && arr.Less(largest, right) {
+		largest = right
+	}
+
+	if largest != i {
+		arr.Swap(i, largest)
+		maxHeapify(arr, largest, n)
 	}
 }

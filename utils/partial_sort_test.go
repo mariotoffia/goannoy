@@ -111,13 +111,19 @@ func BenchmarkPartialSortVsSort(t *testing.B) {
 
 		t.ResetTimer()
 
-		t.Run(fmt.Sprintf("Partial/%d", i), func(t *testing.B) {
+		t.Run(fmt.Sprintf("Partial/%d:", i), func(t *testing.B) {
 			for i := 0; i < t.N; i++ {
 				PartialSortSlice(testSet, 0, 10, N)
 			}
 		})
 
-		t.Run(fmt.Sprintf("Sort/%d", i), func(t *testing.B) {
+		t.Run(fmt.Sprintf("Partial2/%d:", i), func(t *testing.B) {
+			for i := 0; i < t.N; i++ {
+				PartialSortSlice2(testSet, 0, 10, N)
+			}
+		})
+
+		t.Run(fmt.Sprintf("Sort/%d:", i), func(t *testing.B) {
 			for i := 0; i < t.N; i++ {
 				SortPairs(testSet)
 			}
