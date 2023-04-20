@@ -2,7 +2,6 @@ package utils
 
 import (
 	"github.com/mariotoffia/goannoy/interfaces"
-	"golang.org/x/exp/constraints"
 )
 
 func PartialSortSlice[TV interfaces.VectorType, TIX interfaces.IndexTypes](
@@ -73,49 +72,17 @@ func PartialSortSlice2[TV interfaces.VectorType, TIX interfaces.IndexTypes](
 		}
 	}
 
-	heapSort(s[begin:middle])
+	SortPairs2(s[begin:middle])
 
 }
 
-func heapify[T, S constraints.Ordered](arr Pairs[T, S], n, i int) {
-	largest := i
-	left := 2*i + 1
-	right := 2*i + 2
-
-	if left < n && arr.Less(largest, left) {
-		largest = left
-	}
-
-	if right < n && arr.Less(largest, right) {
-		largest = right
-	}
-
-	if largest != i {
-		arr.Swap(i, largest)
-		heapify(arr, n, largest)
-	}
-}
-
-func heapSort[T, S constraints.Ordered](arr Pairs[T, S]) {
-	n := arr.Len()
-
-	for i := n/2 - 1; i >= 0; i-- {
-		heapify(arr, n, i)
-	}
-
-	for i := n - 1; i >= 0; i-- {
-		arr.Swap(0, i)
-		heapify(arr, i, 0)
-	}
-}
-
-func buildMaxHeap[T, S constraints.Ordered](arr Pairs[T, S], n int) {
+func buildMaxHeap[TV interfaces.VectorType, TIX interfaces.IndexTypes](arr Pairs[TV, TIX], n int) {
 	for i := n/2 - 1; i >= 0; i-- {
 		maxHeapify(arr, i, n)
 	}
 }
 
-func maxHeapify[T, S constraints.Ordered](arr Pairs[T, S], i, n int) {
+func maxHeapify[TV interfaces.VectorType, TIX interfaces.IndexTypes](arr Pairs[TV, TIX], i, n int) {
 	largest := i
 	left := 2*i + 1
 	right := 2*i + 2
