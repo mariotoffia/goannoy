@@ -7,11 +7,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/mariotoffia/goannoy/distance/angular"
-	"github.com/mariotoffia/goannoy/index"
-	"github.com/mariotoffia/goannoy/index/memory"
-	"github.com/mariotoffia/goannoy/index/policy"
-	"github.com/mariotoffia/goannoy/interfaces"
+	"github.com/mariotoffia/goannoy/builder"
 	"github.com/mariotoffia/goannoy/random"
 	"github.com/mariotoffia/goannoy/utils"
 	"github.com/pkg/profile"
@@ -21,7 +17,7 @@ func main() {
 	numItems := 1000
 	vectorLength := 40
 	randomVectorContents := true
-	multiplier := uint32(2)
+	multiplier := 2
 	verbose := false
 	justGenerate := false
 	keepAnnFile := false
@@ -57,25 +53,21 @@ func main() {
 		buffer = os.Stdout
 	}
 
-	rnd := random.NewKiss32Random(uint32(0) /*default seed*/)
-
-	var indexMemoryAllocator interfaces.IndexMemoryAllocator
+	indexBuilder := builder.Index[float32, uint32]().
+		AngularDistance(vectorLength).
+		UseMultiWorkerPolicy().
+		MmapIndexAllocator().
+		IndexNumHint(numItems * multiplier)
 
 	if useMemoryIndexAllocator {
-		indexMemoryAllocator = memory.FileIndexMemoryAllocator()
-	} else {
-		indexMemoryAllocator = memory.MmapIndexAllocator()
+		indexBuilder.GCMemoryIndexAllocator()
 	}
 
-	idx := index.New[float32, uint32](
-		rnd,
-		angular.Distance[float32](uint32(vectorLength)),
-		policy.MultiWorker(),
-		memory.IndexMemoryAllocator(),
-		indexMemoryAllocator,
-		verbose,
-		uint32(numItems)*multiplier, /*alloc hint for faster build*/
-	)
+	if verbose {
+		indexBuilder.VerboseLogging()
+	}
+
+	idx := indexBuilder.Build()
 
 	defer idx.Close()
 
@@ -116,7 +108,7 @@ func main() {
 		numItems, vectorLength, multiplier, randomVectorContents)
 
 	dur = utils.Measure(func() {
-		idx.Build(int(multiplier*uint32(vectorLength)), -1)
+		idx.Build(multiplier*vectorLength, -1)
 	})
 
 	fmt.Fprintf(buffer, "Build time: %d ms\n", dur.Milliseconds())
@@ -207,6 +199,8 @@ func main() {
 			profiler.Stop()
 		}
 	}()
+
+	rnd := random.NewKiss32Random(uint32(0))
 
 	for i := 0; i < prec_n; i++ {
 		// select a random node

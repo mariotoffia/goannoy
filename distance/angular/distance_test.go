@@ -1,26 +1,18 @@
-package angular
+package angular_test
 
 import (
 	"testing"
 
-	"github.com/mariotoffia/goannoy/index"
-	"github.com/mariotoffia/goannoy/index/memory"
-	"github.com/mariotoffia/goannoy/index/policy"
+	"github.com/mariotoffia/goannoy/builder"
 	"github.com/mariotoffia/goannoy/interfaces"
-	"github.com/mariotoffia/goannoy/random"
 	"github.com/stretchr/testify/assert"
 )
 
 func createIndex(vectorLength int) interfaces.AnnoyIndex[float32, uint32] {
-	return index.New[float32, uint32](
-		random.NewKiss32Random(uint32(0)),
-		Distance[float32](uint32(vectorLength)),
-		policy.SingleWorker(),
-		memory.IndexMemoryAllocator(),
-		memory.MmapIndexAllocator(),
-		false, /*verbose*/
-		0,
-	)
+	return builder.Index[float32, uint32]().
+		AngularDistance(vectorLength).
+		SingleWorkerPolicy().
+		Build()
 }
 
 func TestGetNnsByVectorReturnsCorrectIndexes(t *testing.T) {

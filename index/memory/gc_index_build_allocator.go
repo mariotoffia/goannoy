@@ -4,26 +4,26 @@ import (
 	"unsafe"
 )
 
-type IndexAllocator struct {
+type GoGCIndexBuildAllocatorImpl struct {
 	ptr     unsafe.Pointer
 	ptrSize int
 	is64    bool
 	memory  []byte
 }
 
-func IndexMemoryAllocator() *IndexAllocator {
-	return &IndexAllocator{
+func GoGCIndexAllocator() *GoGCIndexBuildAllocatorImpl {
+	return &GoGCIndexBuildAllocatorImpl{
 		is64: unsafe.Sizeof(int(0)) == 8,
 	}
 }
 
-func (a *IndexAllocator) Free() {
+func (a *GoGCIndexBuildAllocatorImpl) Free() {
 	a.ptr = nil
 	a.ptrSize = 0
 	a.memory = nil
 }
 
-func (a *IndexAllocator) Reallocate(byteSize int) unsafe.Pointer {
+func (a *GoGCIndexBuildAllocatorImpl) Reallocate(byteSize int) unsafe.Pointer {
 	if a.memory != nil && byteSize < a.ptrSize {
 		// No new memory needed
 		return a.ptr

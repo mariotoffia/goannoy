@@ -1,4 +1,4 @@
-package utils
+package sort
 
 import (
 	"sort"
@@ -30,7 +30,7 @@ func SortSlice3[TIX interfaces.IndexTypes](slice []TIX) {
 }
 
 func SortPairs[TV interfaces.VectorType, TIX interfaces.IndexTypes](
-	pairs []*Pair[TV, TIX],
+	pairs []*interfaces.Pair[TV, TIX],
 ) {
 	sort.Slice(pairs, func(i, j int) bool {
 		return pairs[i].Less(pairs[j])
@@ -50,7 +50,7 @@ func SortPairs[TV interfaces.VectorType, TIX interfaces.IndexTypes](
 	*/
 }
 
-func SortPairs2[TV interfaces.VectorType, TIX interfaces.IndexTypes](arr Pairs[TV, TIX]) {
+func SortPairs2[TV interfaces.VectorType, TIX interfaces.IndexTypes](arr interfaces.Pairs[TV, TIX]) {
 	n := arr.Len()
 
 	for i := n/2 - 1; i >= 0; i-- {
@@ -63,7 +63,7 @@ func SortPairs2[TV interfaces.VectorType, TIX interfaces.IndexTypes](arr Pairs[T
 	}
 }
 
-func heapify[TV interfaces.VectorType, TIX interfaces.IndexTypes](arr Pairs[TV, TIX], n, i int) {
+func heapify[TV interfaces.VectorType, TIX interfaces.IndexTypes](arr interfaces.Pairs[TV, TIX], n, i int) {
 	largest := i
 	left := 2*i + 1
 	right := 2*i + 2

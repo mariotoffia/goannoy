@@ -45,12 +45,12 @@ func FileIndexMemoryAllocator() *fileIndexerAllocator {
 	}
 }
 
-func (mm *fileIndexerAllocator) Get(fqFile string) (interfaces.IndexMemory, bool) {
+func (mm *fileIndexerAllocator) Get(fqFile string) (interfaces.AllocatedIndex, bool) {
 	index, ok := mm.indexes[fqFile]
 	return index, ok
 }
 
-func (mm *fileIndexerAllocator) Open(fqFile string) (interfaces.IndexMemory, error) {
+func (mm *fileIndexerAllocator) Open(fqFile string) (interfaces.AllocatedIndex, error) {
 	file, err := os.Open(fqFile)
 	if err != nil {
 		return nil, err

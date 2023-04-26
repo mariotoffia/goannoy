@@ -1,14 +1,14 @@
-package utils_test
+package sort_test
 
 import (
 	"testing"
 
-	"github.com/mariotoffia/goannoy/utils"
+	"github.com/mariotoffia/goannoy/sort"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestSimple(t *testing.T) {
-	pq := utils.NewPriorityQueue[float32, int]()
+	pq := sort.NewPriorityQueue[float32, int]()
 
 	pq.Push(1.1, 1)
 	pq.Push(4.4, 4)

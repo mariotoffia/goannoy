@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"github.com/mariotoffia/goannoy/interfaces"
+	"github.com/mariotoffia/goannoy/sort"
 )
 
 func Max[T interfaces.IndexTypes](a, b T) T {
@@ -14,8 +15,8 @@ func Max[T interfaces.IndexTypes](a, b T) T {
 }
 
 func Intersection[TIX interfaces.IndexTypes](a, b []TIX) []TIX {
-	SortSlice(a)
-	SortSlice(b)
+	sort.SortSlice(a)
+	sort.SortSlice(b)
 
 	maxSize := len(a)
 

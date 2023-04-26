@@ -13,18 +13,18 @@ import "github.com/mariotoffia/goannoy/interfaces"
 // http://www0.cs.ucl.ac.uk/staff/d.jones/GoodPracticeRNG.pdf -> "Use a good RNG and build it into your code"
 // http://mathforum.org/kb/message.jspa?messageID=6627731
 // https://de.wikipedia.org/wiki/KISS_(Zufallszahlengenerator)
-type Kiss32Random[T interfaces.IndexTypes] struct {
-	x, y, z, c, seed T
+type Kiss32Random[TIX interfaces.IndexTypes] struct {
+	x, y, z, c, seed TIX
 }
 
 // NewKiss32Random creates a new random number generator based on the KISS
 // algorithm.
-func NewKiss32Random[T interfaces.IndexTypes](seed T) *Kiss32Random[T] {
+func NewKiss32Random[TIX interfaces.IndexTypes](seed TIX) *Kiss32Random[TIX] {
 	if seed == 0 {
 		seed = 123456789
 	}
 
-	return &Kiss32Random[T]{
+	return &Kiss32Random[TIX]{
 		x:    seed,
 		y:    362436000,
 		z:    521288629,
@@ -34,7 +34,7 @@ func NewKiss32Random[T interfaces.IndexTypes](seed T) *Kiss32Random[T] {
 }
 
 // Next returns the next random number.
-func (r *Kiss32Random[T]) Next() T {
+func (r *Kiss32Random[TIX]) Next() TIX {
 	r.x = 69069*r.x + 12345
 	r.y ^= r.y << 13
 	r.y ^= r.y >> 17
@@ -42,36 +42,36 @@ func (r *Kiss32Random[T]) Next() T {
 
 	t := uint64(698769069) + uint64(r.z) + uint64(r.c)
 
-	r.c = T(t >> 32)
-	r.z = T(t)
+	r.c = TIX(t >> 32)
+	r.z = TIX(t)
 
-	return T(r.x + r.y + r.z)
+	return TIX(r.x + r.y + r.z)
 }
 
-func (r *Kiss32Random[T]) NextBool() bool {
+func (r *Kiss32Random[TIX]) NextBool() bool {
 	return r.Next()&1 == 1
 }
 
-func (r *Kiss32Random[T]) NextSide() interfaces.Side {
+func (r *Kiss32Random[TIX]) NextSide() interfaces.Side {
 	if r.NextBool() {
 		return interfaces.SideLeft
 	}
 	return interfaces.SideRight
 }
 
-func (r *Kiss32Random[T]) NextIndex(n T) T {
+func (r *Kiss32Random[TIX]) NextIndex(n TIX) TIX {
 	return r.Next() % n
 }
 
-func (r *Kiss32Random[T]) SetSeed(seed T) {
+func (r *Kiss32Random[TIX]) SetSeed(seed TIX) {
 	r.x = seed
 	r.seed = seed
 }
 
-func (r *Kiss32Random[T]) GetSeed() T {
-	return T(r.seed)
+func (r *Kiss32Random[TIX]) GetSeed() TIX {
+	return TIX(r.seed)
 }
 
-func (r *Kiss32Random[T]) CloneAndReset() interfaces.Random[T] {
+func (r *Kiss32Random[TIX]) CloneAndReset() interfaces.Random[TIX] {
 	return NewKiss32Random(r.seed)
 }

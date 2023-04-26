@@ -4,14 +4,14 @@ import (
 	"unsafe"
 
 	"github.com/mariotoffia/goannoy/interfaces"
-	"github.com/mariotoffia/goannoy/utils"
+	"github.com/mariotoffia/goannoy/sort"
 )
 
 // BatchContext is a context that is used when calling `GetNnsByVector` and
 // `GetNnsByItem`.
 type BatchContext[TV interfaces.VectorType, TIX interfaces.IndexTypes] struct {
 	nns      []TIX
-	nns_dist []*utils.Pair[TV, TIX]
+	nns_dist []*interfaces.Pair[TV, TIX]
 	length   int
 }
 
@@ -26,11 +26,11 @@ func (idx *AnnoyIndexImpl[TV, TIX]) CreateContext() interfaces.AnnoyIndexContext
 	bc := &BatchContext[TV, TIX]{
 		length:   nnsLen,
 		nns:      make([]TIX, nnsLen),
-		nns_dist: make([]*utils.Pair[TV, TIX], nnsLen),
+		nns_dist: make([]*interfaces.Pair[TV, TIX], nnsLen),
 	}
 
 	for i := 0; i < nnsLen; i++ {
-		bc.nns_dist[i] = &utils.Pair[TV, TIX]{
+		bc.nns_dist[i] = &interfaces.Pair[TV, TIX]{
 			First:  0,
 			Second: 0,
 		}
@@ -68,7 +68,7 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 	ctx interfaces.AnnoyIndexContext[TV, TIX],
 ) (result []TIX, distances []TV) {
 	bc := ctx.(*BatchContext[TV, TIX])
-	q := utils.NewPriorityQueue[TV, TIX]()
+	q := sort.NewPriorityQueue[TV, TIX]()
 
 	if numNodesToInspect == -1 {
 		numNodesToInspect = numReturn * len(idx._roots)
@@ -122,7 +122,7 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 	// Get distances for all items
 	// To avoid calculating distance multiple times for any items, sort by id
 	nns := bc.nns[:cnt]
-	utils.SortSlice(nns)
+	idx.sorter.SortSlice(nns)
 
 	mem := make([]byte, idx.nodeSize) // Allocate mem on gcheap
 
@@ -164,7 +164,7 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 		}
 	}
 
-	var nns_dist []*utils.Pair[TV, TIX]
+	var nns_dist []*interfaces.Pair[TV, TIX]
 	if cnt < len(nns) {
 		nns_dist = bc.nns_dist[:cnt]
 	} else {
@@ -178,7 +178,7 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 		middle = cnt
 	}
 
-	utils.PartialSortSlice(nns_dist, 0, middle, len(nns_dist))
+	idx.sorter.PartialSortSlice(nns_dist, 0, middle, len(nns_dist))
 
 	for i := 0; i < middle; i++ {
 		distances = append(distances, nns_dist[i].First)

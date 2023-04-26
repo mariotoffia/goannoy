@@ -58,12 +58,12 @@ func MmapIndexAllocator() *mmapIndexAllocator {
 	}
 }
 
-func (mm *mmapIndexAllocator) Get(fqFile string) (interfaces.IndexMemory, bool) {
+func (mm *mmapIndexAllocator) Get(fqFile string) (interfaces.AllocatedIndex, bool) {
 	index, ok := mm.indexes[fqFile]
 	return index, ok
 }
 
-func (mm *mmapIndexAllocator) Open(fqFile string) (interfaces.IndexMemory, error) {
+func (mm *mmapIndexAllocator) Open(fqFile string) (interfaces.AllocatedIndex, error) {
 	file, err := os.Open(fqFile)
 	if err != nil {
 		return nil, err

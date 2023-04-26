@@ -1,6 +1,30 @@
-package utils
+package interfaces
 
 import "golang.org/x/exp/constraints"
+
+type Sorter[TV VectorType, TIX IndexTypes] interface {
+	SortSlice(slice []TIX)
+	SortPairs(pairs []*Pair[TV, TIX])
+	PartialSortSlice(s Pairs[TV, TIX], begin, middle, end int)
+}
+
+type SorterFunctions[TV VectorType, TIX IndexTypes] struct {
+	SortSliceFunc        func(slice []TIX)
+	SortPairsFunc        func(pairs []*Pair[TV, TIX])
+	PartialSortSliceFunc func(s Pairs[TV, TIX], begin, middle, end int)
+}
+
+func (sf *SorterFunctions[TV, TIX]) SortSlice(slice []TIX) {
+	sf.SortSliceFunc(slice)
+}
+
+func (sf *SorterFunctions[TV, TIX]) SortPairs(pairs []*Pair[TV, TIX]) {
+	sf.SortPairsFunc(pairs)
+}
+
+func (sf *SorterFunctions[TV, TIX]) PartialSortSlice(s Pairs[TV, TIX], begin, middle, end int) {
+	sf.PartialSortSliceFunc(s, begin, middle, end)
+}
 
 type Pair[T constraints.Ordered, S constraints.Ordered] struct {
 	First  T

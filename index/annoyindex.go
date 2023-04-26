@@ -6,6 +6,7 @@ import (
 	"unsafe"
 
 	"github.com/mariotoffia/goannoy/interfaces"
+	"github.com/mariotoffia/goannoy/sort"
 	"github.com/mariotoffia/goannoy/utils"
 )
 
@@ -44,9 +45,10 @@ type AnnoyIndexImpl[
 	indexBuilt           bool
 	distance             interfaces.Distance[TV, TIX]
 	buildPolicy          interfaces.AnnoyIndexBuildPolicy
-	allocator            interfaces.Allocator
-	indexMemoryAllocator interfaces.IndexMemoryAllocator
-	indexMemory          interfaces.IndexMemory
+	allocator            interfaces.BuildIndexAllocator
+	indexMemoryAllocator interfaces.IndexAllocator
+	indexMemory          interfaces.AllocatedIndex
+	sorter               interfaces.Sorter[TV, TIX]
 }
 
 // New create a new index instance based on the _TV_ for the vector
@@ -75,12 +77,20 @@ func New[
 	random interfaces.Random[TIX],
 	distance interfaces.Distance[TV, TIX],
 	buildPolicy interfaces.AnnoyIndexBuildPolicy,
-	allocator interfaces.Allocator,
-	indexMemoryAllocator interfaces.IndexMemoryAllocator,
+	allocator interfaces.BuildIndexAllocator,
+	indexMemoryAllocator interfaces.IndexAllocator,
+	sorter interfaces.Sorter[TV, TIX],
 	logVerbose bool,
 	hintNumIndexes TIX,
 ) interfaces.AnnoyIndex[TV, TIX] {
 	//
+	if sorter == nil {
+		sorter = &interfaces.SorterFunctions[TV, TIX]{
+			SortSliceFunc:        sort.SortSlice[TIX],
+			SortPairsFunc:        sort.SortPairs[TV, TIX],
+			PartialSortSliceFunc: sort.PartialSortSlice[TV, TIX],
+		}
+	}
 	index := &AnnoyIndexImpl[TV, TIX]{
 		vectorLength:         distance.VectorLength(),   // _f
 		random:               random,                    // _seed
@@ -92,6 +102,7 @@ func New[
 		allocator:            allocator,
 		buildPolicy:          buildPolicy,
 		indexMemoryAllocator: indexMemoryAllocator,
+		sorter:               sorter,
 	}
 
 	// Pre-allocate memory for the index if hintNumIndexes is set > 0

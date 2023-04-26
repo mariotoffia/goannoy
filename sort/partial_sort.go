@@ -1,11 +1,11 @@
-package utils
+package sort
 
 import (
 	"github.com/mariotoffia/goannoy/interfaces"
 )
 
 func PartialSortSlice[TV interfaces.VectorType, TIX interfaces.IndexTypes](
-	s Pairs[TV, TIX],
+	s interfaces.Pairs[TV, TIX],
 	begin, middle, end int,
 ) {
 	if begin >= end || middle <= begin || middle > end {
@@ -49,7 +49,7 @@ func PartialSortSlice[TV interfaces.VectorType, TIX interfaces.IndexTypes](
 }
 
 func PartialSortSlice2[TV interfaces.VectorType, TIX interfaces.IndexTypes](
-	s Pairs[TV, TIX],
+	s interfaces.Pairs[TV, TIX],
 	begin, middle, end int,
 ) {
 	beginMiddle := middle - begin
@@ -76,13 +76,13 @@ func PartialSortSlice2[TV interfaces.VectorType, TIX interfaces.IndexTypes](
 
 }
 
-func buildMaxHeap[TV interfaces.VectorType, TIX interfaces.IndexTypes](arr Pairs[TV, TIX], n int) {
+func buildMaxHeap[TV interfaces.VectorType, TIX interfaces.IndexTypes](arr interfaces.Pairs[TV, TIX], n int) {
 	for i := n/2 - 1; i >= 0; i-- {
 		maxHeapify(arr, i, n)
 	}
 }
 
-func maxHeapify[TV interfaces.VectorType, TIX interfaces.IndexTypes](arr Pairs[TV, TIX], i, n int) {
+func maxHeapify[TV interfaces.VectorType, TIX interfaces.IndexTypes](arr interfaces.Pairs[TV, TIX], i, n int) {
 	largest := i
 	left := 2*i + 1
 	right := 2*i + 2

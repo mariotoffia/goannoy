@@ -1,15 +1,16 @@
-package utils
+package sort
 
 import (
 	"fmt"
 	"testing"
 
+	"github.com/mariotoffia/goannoy/interfaces"
 	"github.com/mariotoffia/goannoy/random"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCorrectness(t *testing.T) {
-	var s = Pairs[float32, uint32]{
+	var s = interfaces.Pairs[float32, uint32]{
 		{10, 10},
 		{6, 6},
 		{7, 7},
@@ -31,7 +32,7 @@ func TestCorrectness(t *testing.T) {
 }
 
 func TestCorrectness2(t *testing.T) {
-	var s = Pairs[float32, uint32]{
+	var s = interfaces.Pairs[float32, uint32]{
 		{10, 10},
 		{6, 6},
 		{7, 7},
@@ -53,7 +54,7 @@ func TestCorrectness2(t *testing.T) {
 }
 
 func TestCorrectnessBug(t *testing.T) {
-	var s = []*Pair[float32, uint32]{
+	var s = []*interfaces.Pair[float32, uint32]{
 		{1.1055728, 0},
 		{2, 1},
 		{
@@ -67,7 +68,7 @@ func TestCorrectnessBug(t *testing.T) {
 }
 
 func TestCorrectnessBug2(t *testing.T) {
-	var s = []*Pair[float32, uint32]{
+	var s = []*interfaces.Pair[float32, uint32]{
 		{1.1055728, 0},
 		{2, 1},
 		{
@@ -133,11 +134,11 @@ func BenchmarkPartialSortVsPartialSort2(t *testing.B) {
 	}
 }
 
-func createData(N uint32) []*Pair[float32, uint32] {
+func createData(N uint32) []*interfaces.Pair[float32, uint32] {
 	rnd := random.NewGoRandom()
-	s := make([]*Pair[float32, uint32], N)
+	s := make([]*interfaces.Pair[float32, uint32], N)
 	for i := 0; i < len(s); i++ {
-		s[i] = &Pair[float32, uint32]{
+		s[i] = &interfaces.Pair[float32, uint32]{
 			First:  float32(rnd.NextIndex(N)),
 			Second: uint32(i),
 		}

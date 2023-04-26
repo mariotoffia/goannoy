@@ -34,8 +34,9 @@ func TestPrecision(t *testing.T) {
 		rnd,
 		angular.Distance[float32](vectorLength),
 		policy.MultiWorker(),
-		memory.IndexMemoryAllocator(),
+		memory.GoGCIndexAllocator(),
 		memory.MmapIndexAllocator(),
+		nil, /*sorter*/
 		verbose,
 		numItems*multiplier, /*alloc hint for faster build*/
 	)
