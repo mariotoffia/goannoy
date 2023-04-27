@@ -28,7 +28,7 @@ func main() {
 	memProfile := false
 	useMemoryIndexAllocator := false
 
-	flag.BoolVar(&toFile, "file", false, "Write output to file results.txt")
+	flag.BoolVar(&toFile, "file", false, "Write output to file results.txt (default is stdout)")
 	flag.BoolVar(&keepAnnFile, "keep", false, "Keep the .ann file")
 	flag.BoolVar(&verbose, "verbose", false, "Verbose output")
 	flag.IntVar(&numItems, "items", 1000, "Number of items to create")

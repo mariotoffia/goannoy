@@ -54,7 +54,7 @@ Usage of precision:
   -cpu-profile
     	Enable CPU profiling
   -file
-    	Write output to file results.txt
+    	Write output to file results.txt (default to stdout)
   -items int
     	Number of items to create (default 1000)
   -keep

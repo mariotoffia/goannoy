@@ -39,6 +39,16 @@ func (idx *AnnoyIndexImpl[TV, TIX]) CreateContext() interfaces.AnnoyIndexContext
 	return bc
 }
 
+// GetDistance returns the distance between the two indexes.
+func (idx *AnnoyIndexImpl[TV, TIX]) GetDistance(i, j TIX) TV {
+	ni := idx.distance.MapNodeToMemory(idx._nodes, i)
+	nj := idx.distance.MapNodeToMemory(idx._nodes, j)
+
+	return idx.distance.NormalizedDistance(
+		idx.distance.Distance(ni, nj),
+	)
+}
+
 // GetNnsByItem will search for the closest vectors to the given _item_ in the index. When
 // _numReturn_ is -1, it will search number of trees in index * _numReturn_.
 func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByItem(
@@ -181,7 +191,7 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 	idx.sorter.PartialSortSlice(nns_dist, 0, middle, len(nns_dist))
 
 	for i := 0; i < middle; i++ {
-		distances = append(distances, nns_dist[i].First)
+		distances = append(distances, idx.distance.NormalizedDistance(nns_dist[i].First))
 		result = append(result, nns_dist[i].Second)
 	}
 

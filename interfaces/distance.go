@@ -44,6 +44,8 @@ type Distance[TV VectorType, TIX IndexTypes] interface {
 	// MapNodeToMemory will map the node to existing memory and use that for storage.
 	MapNodeToMemory(mem unsafe.Pointer, itemIndex TIX) Node[TV, TIX]
 	PQDistance(distance, margin TV, side Side) TV
+	// NormalizedDistance will normalize the _distance_ and return it.
+	NormalizedDistance(distance TV) TV
 	PQInitialValue() TV
 	// InitNode will initialize the node. Depending on the implementation
 	// it will do different things.

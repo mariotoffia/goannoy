@@ -161,6 +161,10 @@ func (a *angularDistanceImpl[TV, TIX]) CreateSplit(
 	a.Normalize(n)
 }
 
+func (a *angularDistanceImpl[TV, _]) NormalizedDistance(distance TV) TV {
+	return TV(math.Sqrt(float64(distance)))
+}
+
 func (a *angularDistanceImpl[TV, TIX]) PQDistance(distance, margin TV, side interfaces.Side) TV {
 	if side == interfaces.SideLeft {
 		margin = -margin
