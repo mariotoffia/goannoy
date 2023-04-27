@@ -10,6 +10,13 @@ GoAnnoy is an efficient Approximate Nearest Neighbors library for Go, optimized 
 * Supports custom distance functions and indexing policies (e.g. multi-threaded)
 * Pluggable memory, file allocators
 
+## Use Cases
+
+* Approximate nearest neighbor search
+* Recommendation systems
+* Clustering
+* Store of embeddings
+
 ## Getting started
 
 ```go
