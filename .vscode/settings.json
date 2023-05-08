@@ -1,6 +1,6 @@
 {
   "go.testTimeout": "360s",
-  "go.buildTags": "",
+  "go.buildTags": "neon",
   "cSpell.words": [
     "alloc",
     "amath",
@@ -15,6 +15,7 @@
     "indexpolicy",
     "jfcg",
     "lastset",
+    "linkname",
     "mariotoffia",
     "Marsaglia",
     "Memcpy",
