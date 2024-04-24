@@ -49,8 +49,8 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetDistance(i, j TIX) TV {
 	)
 }
 
-// GetNnsByItem will search for the closest vectors to the given _item_ in the index. When
-// _numReturn_ is -1, it will search number of trees in index * _numReturn_.
+// GetNnsByItem will search for the closest vectors to the given _item_ in the index.
+// When _numNodesToInspect_ is -1, it will search number of trees in index * _numReturn_.
 func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByItem(
 	item TIX,
 	numReturn, numNodesToInspect int,
@@ -70,8 +70,8 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByItem(
 	)
 }
 
-// GetAllNns will search for the closest vectors to the given _vector_. When
-// _numReturn_ is -1, it will search number of trees in index * _numReturn_.
+// GetNnsByVector will search for the closest vectors to the given _vector_.
+// When _numNodesToInspect_ is -1, it will search number of trees in index * _numReturn_.
 func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 	vector []TV,
 	numReturn, numNodesToInspect int,
