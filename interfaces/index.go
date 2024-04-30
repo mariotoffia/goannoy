@@ -40,15 +40,15 @@ type AnnoyIndex[TV VectorType, TIX IndexTypes] interface {
 	CreateContext() AnnoyIndexContext[TV, TIX]
 	// GetDistance returns the distance between the two given items.
 	GetDistance(i, j TIX) TV
-	// GetNnsByItem will search for the closest vectors to the given _item_ in the index. When
-	// _numReturn_ is -1, it will search number of trees in index * _numReturn_.
+	// GetNnsByItem will search for the closest vectors to the given _item_ in the index.
+	// When _numNodesToInspect_ is -1, it will search number of trees in index * _numReturn_.
 	GetNnsByItem(
 		item TIX,
 		numReturn, numNodesToInspect int,
 		ctx AnnoyIndexContext[TV, TIX],
 	) (result []TIX, distances []TV)
-	// GetAllNns will search for the closest vectors to the given _vector_. When
-	// _numReturn_ is -1, it will search number of trees in index * _numReturn_.
+	// GetNnsByVector will search for the closest vectors to the given _vector_.
+	// When _numNodesToInspect_ is -1, it will search number of trees in index * _numReturn_.
 	GetNnsByVector(
 		vector []TV,
 		numReturn, numNodesToInspect int,
