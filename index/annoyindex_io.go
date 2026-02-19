@@ -66,13 +66,15 @@ func (idx *AnnoyIndexImpl[TV, TIX]) Load(fileName string) error {
 		m    TIX
 	)
 
-	for i := idx._n_nodes - 1; i >= 0; i-- {
-
-		n := idx.getNode(i)
+	// Scan backwards to discover root nodes. Root copies are appended at the
+	// end of the file during Build and share the same n_descendants value
+	// (== _n_items). Use i > 0 to avoid unsigned underflow with TIX.
+	for i := idx._n_nodes; i > 0; i-- {
+		n := idx.getNode(i - 1)
 		k := n.GetNumberOfDescendants()
 
 		if !mset || k == m {
-			idx._roots = append(idx._roots, i)
+			idx._roots = append(idx._roots, i-1)
 			m = k
 			mset = true
 		} else {
@@ -80,45 +82,65 @@ func (idx *AnnoyIndexImpl[TV, TIX]) Load(fileName string) error {
 		}
 	}
 
-	// hacky fix: since the last root precedes the copy of all roots, delete it
-	if len(idx._roots) > 1 {
-		fn := idx.getNode(idx._roots[0])
-		ln := idx.getNode(idx._roots[len(idx._roots)-1])
+	idx._n_items = m
 
-		if fn.GetChildren()[0] == ln.GetChildren()[0] {
-			idx._roots = idx._roots[:len(idx._roots)-1]
+	// Filter out item nodes that were incorrectly included as roots.
+	// This happens when _n_items == 1 because item leaf nodes and root
+	// nodes both have n_descendants == 1.
+	var filtered []TIX
+	for _, r := range idx._roots {
+		if r >= idx._n_items {
+			filtered = append(filtered, r)
 		}
+	}
+
+	// Deduplicate: Build appends copies of the original root nodes at the
+	// end of the file. The backward scan picks up both copies (higher indices)
+	// and originals (lower indices). We must keep originals over copies because
+	// root copies may have incomplete data (CopyNode uses vectorLength, not
+	// nodeSize). Since filtered is ordered highest-index-first, we iterate
+	// and let later entries (originals) overwrite earlier ones (copies).
+	type childKey struct{ c0, c1 TIX }
+	rootByKey := make(map[childKey]TIX)
+	var keyOrder []childKey
+
+	for _, r := range filtered {
+		nd := idx.getNode(r)
+		children := nd.GetChildren()
+
+		var key childKey
+		if len(children) >= 2 {
+			key = childKey{children[0], children[1]}
+		} else if len(children) == 1 {
+			key = childKey{children[0], 0}
+		}
+
+		if _, exists := rootByKey[key]; !exists {
+			keyOrder = append(keyOrder, key)
+		}
+		rootByKey[key] = r // last write wins: originals overwrite copies
+	}
+
+	idx._roots = idx._roots[:0]
+	for _, key := range keyOrder {
+		idx._roots = append(idx._roots, rootByKey[key])
 	}
 
 	idx.indexBuilt = true
 	idx.indexLoaded = true
-	idx._n_items = m
 
 	if idx.logVerbose {
 		fmt.Println("Loaded index to from file", fileName, "with", idx._n_nodes, "nodes")
 	}
 
-	idx.batchMaxNNS = -1
-
-	for i := TIX(0); i < idx._n_nodes; i++ {
-		nd := idx.getNode(i)
-
-		nDescendants := nd.GetNumberOfDescendants()
-
-		if nDescendants == 1 && i < idx._n_items {
-			idx.batchMaxNNS++
-		} else if nDescendants <= idx.maxDescendants {
-			idx.batchMaxNNS += len(nd.GetChildren())
-		}
-
-		if idx.logVerbose {
+	if idx.logVerbose {
+		for i := TIX(0); i < idx._n_nodes; i++ {
+			nd := idx.getNode(i)
 			fmt.Println(i, ": ", utils.DumpNode(idx.distance, nd))
 		}
 	}
 
-	if idx.logVerbose {
-		fmt.Println("Max NNS:", idx.batchMaxNNS)
-	}
+	idx.computeBatchMaxNNS()
 
 	return nil
 }

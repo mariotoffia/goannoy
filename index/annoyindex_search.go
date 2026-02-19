@@ -102,16 +102,22 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 		nDescendants := nd.GetNumberOfDescendants()
 
 		if nDescendants == 1 && i < idx._n_items {
-			bc.nns[cnt] = i
+			if cnt < bc.length {
+				bc.nns[cnt] = i
+			}
 			cnt++
 		} else if nDescendants <= idx.maxDescendants {
-			dst := nd.GetChildren()
-			if len(dst) == int(nDescendants) {
-				copy(bc.nns[TIX(cnt):], dst)
-			} else {
-				copy(bc.nns[TIX(cnt):], dst[:nDescendants])
+			n := int(nDescendants)
+			remaining := bc.length - cnt
+			if remaining > 0 {
+				toCopy := n
+				if toCopy > remaining {
+					toCopy = remaining
+				}
+				dst := nd.GetChildren()
+				copy(bc.nns[cnt:cnt+toCopy], dst[:toCopy])
 			}
-			cnt += int(nDescendants)
+			cnt += n
 		} else {
 			// Node is normal of the split plane.
 			margin := idx.distance.Margin(nd, vector)
@@ -127,6 +133,11 @@ func (idx *AnnoyIndexImpl[TV, TIX]) GetNnsByVector(
 				children[interfaces.SideLeft],
 			)
 		}
+	}
+
+	// Clamp cnt to buffer capacity
+	if cnt > bc.length {
+		cnt = bc.length
 	}
 
 	// Get distances for all items

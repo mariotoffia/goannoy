@@ -15,7 +15,7 @@ type dotProductDistanceImpl[TV interfaces.VectorType, TIX interfaces.IndexTypes]
 	vectorLength   TIX
 }
 
-// Distance creates a new angular distance implementation.
+// Distance creates a new dot product distance implementation.
 func Distance[TV interfaces.VectorType, TIX interfaces.IndexTypes](
 	vectorLength TIX,
 ) *dotProductDistanceImpl[TV, TIX] {
@@ -155,12 +155,20 @@ func (dp *dotProductDistanceImpl[TV, TIX]) Distance(x interfaces.Node[TV, TIX], 
 	xv := x.GetRawVector()
 	yv := y.GetRawVector()
 
+	// Include dot_factor (the extra augmented dimension from the Bachrach
+	// et al. transformation) in the distance computation.  In the C++
+	// implementation, dot_factor is stored as v[f] so the standard
+	// dot-product over f+1 elements includes it automatically.  In Go the
+	// field is stored separately, so we add it explicitly.
+	xdf := x.(*DotProductNodeImpl[TV, TIX]).dot_factor
+	ydf := y.(*DotProductNodeImpl[TV, TIX]).dot_factor
+
 	if pp == 0 {
-		pp = vector.DotUnsafe(xv, xv, dp.vectorLength)
+		pp = vector.DotUnsafe(xv, xv, dp.vectorLength) + xdf*xdf
 	}
 
 	if qq == 0 {
-		qq = vector.DotUnsafe(yv, yv, dp.vectorLength)
+		qq = vector.DotUnsafe(yv, yv, dp.vectorLength) + ydf*ydf
 	}
 
 	var ppqq TV
@@ -170,7 +178,7 @@ func (dp *dotProductDistanceImpl[TV, TIX]) Distance(x interfaces.Node[TV, TIX], 
 	}
 
 	if ppqq > 0 {
-		pq := vector.DotUnsafe(xv, yv, dp.vectorLength)
+		pq := vector.DotUnsafe(xv, yv, dp.vectorLength) + xdf*ydf
 		return 2.0 - 2.0*pq/TV(math.Sqrt(float64(ppqq)))
 	}
 	return 2.0
@@ -227,5 +235,5 @@ func (dp *dotProductDistanceImpl[TV, TIX]) InitNode(node interfaces.Node[TV, TIX
 }
 
 func (dp *dotProductDistanceImpl[TV, TIX]) Name() string {
-	return "angular"
+	return "dotproduct"
 }

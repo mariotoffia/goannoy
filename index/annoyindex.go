@@ -214,23 +214,7 @@ func (idx *AnnoyIndexImpl[TV, TIX]) Build(numberOfTrees, numWorkers int) {
 	idx._n_nodes += TIX(len(idx._roots))
 	idx.indexBuilt = true
 
-	idx.batchMaxNNS = -1
-
-	for i := TIX(0); i < idx._n_nodes; i++ {
-		nd := idx.getNode(i)
-
-		nDescendants := nd.GetNumberOfDescendants()
-
-		if nDescendants == 1 && i < idx._n_items {
-			idx.batchMaxNNS++
-		} else if nDescendants <= idx.maxDescendants {
-			idx.batchMaxNNS += len(nd.GetChildren())
-		}
-	}
-
-	if idx.logVerbose {
-		fmt.Println("Max NNS:", idx.batchMaxNNS)
-	}
+	idx.computeBatchMaxNNS()
 }
 
 // ThreadBuild is called from the build policy to build the index.
@@ -461,6 +445,28 @@ func (idx *AnnoyIndexImpl[TV, TIX]) splitImbalance(
 
 	f := ls / (ls + rs + 1e-9) // Avoid 0/0
 	return math.Max(f, 1-f)
+}
+
+// computeBatchMaxNNS calculates the maximum number of nearest neighbor
+// candidates that can be collected during a single search traversal.
+func (idx *AnnoyIndexImpl[TV, TIX]) computeBatchMaxNNS() {
+	idx.batchMaxNNS = -1
+
+	for i := TIX(0); i < idx._n_nodes; i++ {
+		nd := idx.getNode(i)
+
+		nDescendants := nd.GetNumberOfDescendants()
+
+		if nDescendants == 1 && i < idx._n_items {
+			idx.batchMaxNNS++
+		} else if nDescendants <= idx.maxDescendants {
+			idx.batchMaxNNS += len(nd.GetChildren())
+		}
+	}
+
+	if idx.logVerbose {
+		fmt.Println("Max NNS:", idx.batchMaxNNS)
+	}
 }
 
 func (idx *AnnoyIndexImpl[TV, TIX]) allocateSize(

@@ -2,6 +2,7 @@ package builder
 
 import (
 	"github.com/mariotoffia/goannoy/distance/angular"
+	"github.com/mariotoffia/goannoy/distance/dotproduct"
 	"github.com/mariotoffia/goannoy/index"
 	"github.com/mariotoffia/goannoy/index/memory"
 	"github.com/mariotoffia/goannoy/index/policy"
@@ -41,6 +42,11 @@ func (bld *AnnoyIndexBuilderImpl[TV, TIX]) IndexNumHint(allocHint int) *AnnoyInd
 
 func (bld *AnnoyIndexBuilderImpl[TV, TIX]) AngularDistance(vectorLength int) *AnnoyIndexBuilderImpl[TV, TIX] {
 	bld.distance = angular.Distance[TV](TIX(vectorLength))
+	return bld
+}
+
+func (bld *AnnoyIndexBuilderImpl[TV, TIX]) DotProductDistance(vectorLength int) *AnnoyIndexBuilderImpl[TV, TIX] {
+	bld.distance = dotproduct.Distance[TV](TIX(vectorLength))
 	return bld
 }
 
