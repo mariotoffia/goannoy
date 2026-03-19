@@ -21,6 +21,8 @@ func TestUpstreamNotFoundTree(t *testing.T) {
 }
 
 func TestUpstreamBinaryCompatibility(t *testing.T) {
+	requireFixture(t, upstreamBinaryFixturePath())
+
 	idx := angularIdxMmap(10)
 	defer idx.Close()
 
@@ -34,6 +36,8 @@ func TestUpstreamBinaryCompatibility(t *testing.T) {
 }
 
 func TestUpstreamLoadSaveFixture(t *testing.T) {
+	requireFixture(t, upstreamBinaryFixturePath())
+
 	dir := t.TempDir()
 	path := filepath.Join(dir, "fixture-copy.tree")
 

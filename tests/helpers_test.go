@@ -2,6 +2,7 @@ package tests
 
 import (
 	"math"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -55,6 +56,13 @@ func angularIdxMultiWithSeed(dim int, seed uint64) interfaces.AnnoyIndex[float32
 
 func upstreamBinaryFixturePath() string {
 	return filepath.Join("testdata", "test.tree")
+}
+
+func requireFixture(t *testing.T, path string) {
+	t.Helper()
+	if _, err := os.Stat(path); err != nil {
+		t.Skipf("fixture %s not available (run with .work/ checked out): %v", path, err)
+	}
 }
 
 func manualAngularDist(u, v []float32) float32 {

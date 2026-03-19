@@ -84,7 +84,75 @@ go run cmd/precision/main.go -file -items 10000 -prec 1000
 ```
 will generate *10_000* indexes and search the index. A _results.txt_ in the current directory is created with performance stats.
 
+## Optional CPU Acceleration (Experimental)
+
+> **Note:** CPU acceleration is experimental. The accelerated backends produce numerically equivalent results (within floating-point tolerance) but depend on build tags and, on `amd64`, an experimental Go feature. APIs and build requirements may change.
+
+The default build uses the scalar Go dot-product implementation. To opt into hardware acceleration, add the `accelerate` build tag. The `GOARCH` target selects the backend automatically:
+
+| Target | Backend | Build tag | Extra requirement |
+|--------|---------|-----------|-------------------|
+| `arm64` | NEON/AdvSIMD assembly | `accelerate` | — |
+| `amd64` | Go 1.26 `simd/archsimd` intrinsics | `accelerate` | `GOEXPERIMENT=simd` |
+| Any other | Scalar (no-op) | — | — |
+
+Builds **without** the `accelerate` tag always use the portable scalar implementation regardless of architecture.
+
+Examples:
+
+```bash
+# Default scalar build (all platforms)
+go build ./...
+
+# arm64 accelerated build (Apple Silicon, Graviton, etc.)
+go build -tags accelerate ./...
+
+# amd64 accelerated build (requires Go 1.26+ experimental SIMD support)
+GOEXPERIMENT=simd go build -tags accelerate ./...
+```
+
+If you use the repository `Makefile`, note that it already exports `GOEXPERIMENT=arenas`. For accelerated `amd64` builds, use `GOEXPERIMENT=arenas,simd`.
+
+## Benchmarking Scalar vs Accelerated Builds
+
+The acceleration benchmarks include:
+
+* primitive dot-product benchmarks in [`vector`](./vector)
+* end-to-end indexing benchmarks
+* end-to-end search benchmarks for `AngularDistance` and `DotProductDistance`
+
+Run the current build's benchmark suite:
+
+```bash
+make bench
+```
+
+Run scalar-only output and save it to `bench-results/`:
+
+```bash
+make bench-scalar
+```
+
+Run accelerated benchmarks on Apple Silicon or other `arm64` machines:
+
+```bash
+make bench-accel-arm64
+```
+
+Run accelerated benchmarks on `amd64` machines:
+
+```bash
+make bench-accel-amd64
+```
+
+Run both scalar and accelerated benchmarks back-to-back and compare them:
+
+```bash
+make bench-compare
+```
+
+`bench-compare` saves both runs under `bench-results/`. If [`benchstat`](https://pkg.go.dev/golang.org/x/perf/cmd/benchstat) is installed, it is run automatically. Otherwise, compare the two output files manually.
+
 ## Credits
 
 This is a port of Spotify https://github.com/spotify/annoy - all kudos goes to them! :)
-

@@ -123,6 +123,8 @@ func TestUpstreamDotGetNnsByItem(t *testing.T) {
 }
 
 func TestUpstreamDotBinaryCompatibility(t *testing.T) {
+	requireFixture(t, upstreamDotFixturePath())
+
 	idx := dotProductIdxMmap(3)
 	defer idx.Close()
 
