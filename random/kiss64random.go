@@ -60,8 +60,8 @@ func (r *Kiss64Random) NextSide() interfaces.Side {
 	return interfaces.SideRight
 }
 
-func (r *Kiss64Random) NextIndex(n uint64) uint64 {
-	return r.Next() % n
+func (r *Kiss64Random) NextIndex(n interfaces.ItemID) interfaces.ItemID {
+	return interfaces.ItemID(r.Next() % uint64(n))
 }
 
 func (r *Kiss64Random) SetSeed(seed uint64) {
@@ -73,6 +73,6 @@ func (r *Kiss64Random) GetSeed() uint64 {
 	return r.seed
 }
 
-func (r *Kiss64Random) CloneAndReset() *Kiss64Random {
+func (r *Kiss64Random) CloneAndReset() interfaces.Random {
 	return NewKiss64Random(r.seed)
 }

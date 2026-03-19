@@ -3,6 +3,9 @@ package builder
 import (
 	"github.com/mariotoffia/goannoy/distance/angular"
 	"github.com/mariotoffia/goannoy/distance/dotproduct"
+	"github.com/mariotoffia/goannoy/distance/euclidean"
+	"github.com/mariotoffia/goannoy/distance/hamming"
+	"github.com/mariotoffia/goannoy/distance/manhattan"
 	"github.com/mariotoffia/goannoy/index"
 	"github.com/mariotoffia/goannoy/index/memory"
 	"github.com/mariotoffia/goannoy/index/policy"
@@ -10,77 +13,97 @@ import (
 	"github.com/mariotoffia/goannoy/random"
 )
 
-type AnnoyIndexBuilderImpl[TV interfaces.VectorType, TIX interfaces.IndexTypes] struct {
-	allocHint            TIX
-	random               interfaces.Random[TIX]
-	distance             interfaces.Distance[TV, TIX]
+type AnnoyIndexBuilderImpl[TV interfaces.VectorType] struct {
+	allocHint            int
+	random               interfaces.Random
+	distance             interfaces.Distance[TV]
 	buildPolicy          interfaces.AnnoyIndexBuildPolicy
 	allocator            interfaces.BuildIndexAllocator
 	indexMemoryAllocator interfaces.IndexAllocator
-	sorter               interfaces.Sorter[TV, TIX]
+	sorter               interfaces.Sorter[TV]
 	logVerbose           bool
 }
 
-// Index creates a new `AnnoyIndexBuilderImpl` instance.
-func Index[TV interfaces.VectorType, TIX interfaces.IndexTypes]() *AnnoyIndexBuilderImpl[TV, TIX] {
-	return &AnnoyIndexBuilderImpl[TV, TIX]{}
+// Index creates the default public builder shape used throughout this repo.
+func Index() *AnnoyIndexBuilderImpl[float32] {
+	return &AnnoyIndexBuilderImpl[float32]{}
 }
 
-func (bld *AnnoyIndexBuilderImpl[TV, TIX]) Random(rnd interfaces.Random[TIX]) *AnnoyIndexBuilderImpl[TV, TIX] {
+// IndexOf creates a typed `AnnoyIndexBuilderImpl` instance for internal/advanced use.
+func IndexOf[TV interfaces.VectorType]() *AnnoyIndexBuilderImpl[TV] {
+	return &AnnoyIndexBuilderImpl[TV]{}
+}
+
+func (bld *AnnoyIndexBuilderImpl[TV]) Random(rnd interfaces.Random) *AnnoyIndexBuilderImpl[TV] {
 	bld.random = rnd
 	return bld
 }
 
-func (bld *AnnoyIndexBuilderImpl[TV, TIX]) IndexNumHint(allocHint int) *AnnoyIndexBuilderImpl[TV, TIX] {
+func (bld *AnnoyIndexBuilderImpl[TV]) IndexNumHint(allocHint int) *AnnoyIndexBuilderImpl[TV] {
 	if allocHint <= 0 {
 		return bld
 	}
 
-	bld.allocHint = TIX(allocHint)
+	bld.allocHint = allocHint
 	return bld
 }
 
-func (bld *AnnoyIndexBuilderImpl[TV, TIX]) AngularDistance(vectorLength int) *AnnoyIndexBuilderImpl[TV, TIX] {
-	bld.distance = angular.Distance[TV](TIX(vectorLength))
+func (bld *AnnoyIndexBuilderImpl[TV]) AngularDistance(vectorLength int) *AnnoyIndexBuilderImpl[TV] {
+	bld.distance = angular.Distance[TV](vectorLength)
 	return bld
 }
 
-func (bld *AnnoyIndexBuilderImpl[TV, TIX]) DotProductDistance(vectorLength int) *AnnoyIndexBuilderImpl[TV, TIX] {
-	bld.distance = dotproduct.Distance[TV](TIX(vectorLength))
+func (bld *AnnoyIndexBuilderImpl[TV]) DotProductDistance(vectorLength int) *AnnoyIndexBuilderImpl[TV] {
+	bld.distance = dotproduct.Distance[TV](vectorLength)
 	return bld
 }
 
-func (bld *AnnoyIndexBuilderImpl[TV, TIX]) UseMultiWorkerPolicy() *AnnoyIndexBuilderImpl[TV, TIX] {
+func (bld *AnnoyIndexBuilderImpl[TV]) EuclideanDistance(vectorLength int) *AnnoyIndexBuilderImpl[TV] {
+	bld.distance = euclidean.Distance[TV](vectorLength)
+	return bld
+}
+
+func (bld *AnnoyIndexBuilderImpl[TV]) ManhattanDistance(vectorLength int) *AnnoyIndexBuilderImpl[TV] {
+	bld.distance = manhattan.Distance[TV](vectorLength)
+	return bld
+}
+
+func (bld *AnnoyIndexBuilderImpl[TV]) HammingDistance(vectorLength int) *AnnoyIndexBuilderImpl[TV] {
+	bld.distance = hamming.Distance[TV](vectorLength)
+	return bld
+}
+
+func (bld *AnnoyIndexBuilderImpl[TV]) UseMultiWorkerPolicy() *AnnoyIndexBuilderImpl[TV] {
 	bld.buildPolicy = policy.MultiWorker()
 	return bld
 }
 
-func (bld *AnnoyIndexBuilderImpl[TV, TIX]) SingleWorkerPolicy() *AnnoyIndexBuilderImpl[TV, TIX] {
+func (bld *AnnoyIndexBuilderImpl[TV]) SingleWorkerPolicy() *AnnoyIndexBuilderImpl[TV] {
 	bld.buildPolicy = policy.SingleWorker()
 	return bld
 }
 
-func (bld *AnnoyIndexBuilderImpl[TV, TIX]) MmapIndexAllocator() *AnnoyIndexBuilderImpl[TV, TIX] {
+func (bld *AnnoyIndexBuilderImpl[TV]) MmapIndexAllocator() *AnnoyIndexBuilderImpl[TV] {
 	bld.indexMemoryAllocator = memory.MmapIndexAllocator()
 	return bld
 }
 
-func (bld *AnnoyIndexBuilderImpl[TV, TIX]) GCMemoryIndexAllocator() *AnnoyIndexBuilderImpl[TV, TIX] {
+func (bld *AnnoyIndexBuilderImpl[TV]) GCMemoryIndexAllocator() *AnnoyIndexBuilderImpl[TV] {
 	bld.indexMemoryAllocator = memory.FileIndexMemoryAllocator()
 	return bld
 }
 
-func (bld *AnnoyIndexBuilderImpl[TV, TIX]) UseSorter(sorter interfaces.Sorter[TV, TIX]) *AnnoyIndexBuilderImpl[TV, TIX] {
+func (bld *AnnoyIndexBuilderImpl[TV]) UseSorter(sorter interfaces.Sorter[TV]) *AnnoyIndexBuilderImpl[TV] {
 	bld.sorter = sorter
 	return bld
 }
 
-func (bld *AnnoyIndexBuilderImpl[TV, TIX]) VerboseLogging() *AnnoyIndexBuilderImpl[TV, TIX] {
+func (bld *AnnoyIndexBuilderImpl[TV]) VerboseLogging() *AnnoyIndexBuilderImpl[TV] {
 	bld.logVerbose = true
 	return bld
 }
 
-func (bld *AnnoyIndexBuilderImpl[TV, TIX]) Build() interfaces.AnnoyIndex[TV, TIX] {
+func (bld *AnnoyIndexBuilderImpl[TV]) Build() interfaces.AnnoyIndex[TV] {
 
 	if bld.buildPolicy == nil {
 		bld.buildPolicy = policy.SingleWorker()
@@ -95,15 +118,7 @@ func (bld *AnnoyIndexBuilderImpl[TV, TIX]) Build() interfaces.AnnoyIndex[TV, TIX
 	}
 
 	if bld.random == nil {
-		var t TIX
-
-		switch any(t).(type) {
-		case uint32:
-			k := random.NewKiss32Random(uint32(0))
-			bld.random = any(k).(interfaces.Random[TIX]) // Ugly hack to get around type system
-		case uint64:
-			// TODO: Need to completely refactor random!!
-		}
+		bld.random = random.NewKiss64Random(0)
 	}
 
 	return index.New(

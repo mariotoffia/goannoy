@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func createIndex(vectorLength int) interfaces.AnnoyIndex[float32, uint32] {
-	return builder.Index[float32, uint32]().
+func createIndex(vectorLength int) interfaces.AnnoyIndex[float32] {
+	return builder.Index().
 		AngularDistance(vectorLength).
 		SingleWorkerPolicy().
 		Build()
@@ -27,13 +27,13 @@ func TestGetNnsByVectorReturnsCorrectIndexes(t *testing.T) {
 	ctx := idx.CreateContext()
 
 	result, _ := idx.GetNnsByVector([]float32{3, 2, 1}, 3, -1, ctx)
-	assert.Equal(t, []uint32{2, 1, 0}, result)
+	assert.Equal(t, []int32{2, 1, 0}, result)
 
 	result, _ = idx.GetNnsByVector([]float32{1, 2, 3}, 3, -1, ctx)
-	assert.Equal(t, []uint32{0, 1, 2}, result)
+	assert.Equal(t, []int32{0, 1, 2}, result)
 
 	result, _ = idx.GetNnsByVector([]float32{2, 0, 1}, 3, -1, ctx)
-	assert.Equal(t, []uint32{2, 0, 1}, result)
+	assert.Equal(t, []int32{2, 0, 1}, result)
 }
 
 func TestGetNnsByItem(t *testing.T) {
@@ -48,10 +48,10 @@ func TestGetNnsByItem(t *testing.T) {
 	ctx := idx.CreateContext()
 
 	result, _ := idx.GetNnsByItem(0, 3, -1, ctx)
-	assert.Equal(t, []uint32{0, 1, 2}, result)
+	assert.Equal(t, []int32{0, 1, 2}, result)
 
 	result, _ = idx.GetNnsByItem(1, 3, -1, ctx)
-	assert.Equal(t, []uint32{1, 0, 2}, result)
+	assert.Equal(t, []int32{1, 0, 2}, result)
 
 }
 

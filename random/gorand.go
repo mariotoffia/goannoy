@@ -9,23 +9,23 @@ import (
 
 type GoRandom struct {
 	rng  *rand.Rand
-	seed uint32
+	seed uint64
 }
 
 func NewGoRandom() *GoRandom {
-	return NewGoRandomWithSeed(uint32(time.Now().UnixNano()))
+	return NewGoRandomWithSeed(uint64(time.Now().UnixNano()))
 }
 
-func NewGoRandomWithSeed(seed uint32) *GoRandom {
-	src := rand.NewSource(time.Now().UnixNano())
+func NewGoRandomWithSeed(seed uint64) *GoRandom {
+	src := rand.NewSource(int64(seed))
 	return &GoRandom{
 		rng:  rand.New(src),
 		seed: seed,
 	}
 }
 
-func (r *GoRandom) Next() uint32 {
-	return uint32(r.rng.Intn(0x7fffffff))
+func (r *GoRandom) Next() uint64 {
+	return uint64(r.rng.Int63())
 }
 
 func (r *GoRandom) NextBool() bool {
@@ -43,18 +43,19 @@ func (r *GoRandom) NormFloat64() float64 {
 	return r.rng.NormFloat64()
 }
 
-func (r *GoRandom) NextIndex(n uint32) uint32 {
-	return uint32(r.rng.Intn(int(n)))
+func (r *GoRandom) NextIndex(n interfaces.ItemID) interfaces.ItemID {
+	return interfaces.ItemID(r.rng.Intn(int(n)))
 }
 
-func (r *GoRandom) GetSeed() uint32 {
+func (r *GoRandom) GetSeed() uint64 {
 	return r.seed
 }
 
-func (r *GoRandom) SetSeed(seed uint32) {
+func (r *GoRandom) SetSeed(seed uint64) {
 	r.rng.Seed(int64(seed))
+	r.seed = seed
 }
 
-func (r *GoRandom) CloneAndReset() *GoRandom {
+func (r *GoRandom) CloneAndReset() interfaces.Random {
 	return NewGoRandomWithSeed(r.seed)
 }

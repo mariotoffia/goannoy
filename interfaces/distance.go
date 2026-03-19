@@ -15,47 +15,47 @@ type VectorType interface {
 	float32 | float64
 }
 
-type Distance[TV VectorType, TIX IndexTypes] interface {
+type Distance[TV VectorType] interface {
 	// PreProcess will pre-process the data before it is used for distance calculations.
 	//
 	// The _nodes_ is a pointer to the beginning of the memory where the nodes are stored.
-	PreProcess(nodes unsafe.Pointer, node_count TIX)
+	PreProcess(nodes unsafe.Pointer, nodeCount ItemID)
 	// Distance calculates the distance from _x_ to _y_ `Node`.
-	Distance(x Node[TV, TIX], y Node[TV, TIX]) TV
+	Distance(x Node[TV], y Node[TV]) TV
 	// Normalize will normalize the vector for the _node_.
-	Normalize(node Node[TV, TIX])
+	Normalize(node Node[TV])
 	// Margin will return the margin for the node.
-	Margin(n Node[TV, TIX], y []TV) TV
+	Margin(n Node[TV], y []TV) TV
 	// CreateSplit will write to split node _m_ based on the _children_ nodes. The _nodeSize_ is the
-	// size of the memory a `Node[TV,TIX]` will occupy. The _vectorLength_ is the length of the vector
+	// size of the memory a `Node[TV]` will occupy. The _vectorLength_ is the length of the vector
 	// the node will hold.
 	CreateSplit(
-		children []Node[TV, TIX],
-		nodeSize TIX,
-		random Random[TIX],
-		m Node[TV, TIX],
+		children []Node[TV],
+		nodeSize int,
+		random Random,
+		m Node[TV],
 	)
 	// Side determines which side of the children indices to use when a split is made.
 	Side(
-		m Node[TV, TIX],
+		m Node[TV],
 		v []TV,
-		random Random[TIX],
+		random Random,
 	) Side
 	// MapNodeToMemory will map the node to existing memory and use that for storage.
-	MapNodeToMemory(mem unsafe.Pointer, itemIndex TIX) Node[TV, TIX]
+	MapNodeToMemory(mem unsafe.Pointer, itemIndex ItemID) Node[TV]
 	PQDistance(distance, margin TV, side Side) TV
 	// NormalizedDistance will normalize the _distance_ and return it.
 	NormalizedDistance(distance TV) TV
 	PQInitialValue() TV
 	// InitNode will initialize the node. Depending on the implementation
 	// it will do different things.
-	InitNode(node Node[TV, TIX])
+	InitNode(node Node[TV])
 	// MaxNumChildren is the max number of descendants to fit into node by overwriting
 	// the vector space.
-	MaxNumChildren() TIX
+	MaxNumChildren() ItemID
 	// NodeSize is the size of the allocated memory for the node. Each node occupy the same
 	// amount of memory.
-	NodeSize() TIX
+	NodeSize() int
 	// VectorLength is the length of the vector the this distance operates on.
-	VectorLength() TIX
+	VectorLength() int
 }

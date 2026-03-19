@@ -9,22 +9,20 @@ import (
 	"github.com/mariotoffia/goannoy/vector"
 )
 
-type dotProductDistanceImpl[TV interfaces.VectorType, TIX interfaces.IndexTypes] struct {
-	nodeSize       TIX
-	maxNumChildren TIX
-	vectorLength   TIX
+type dotProductDistanceImpl[TV interfaces.VectorType] struct {
+	nodeSize       int
+	maxNumChildren interfaces.ItemID
+	vectorLength   int
 }
 
 // Distance creates a new dot product distance implementation.
-func Distance[TV interfaces.VectorType, TIX interfaces.IndexTypes](
-	vectorLength TIX,
-) *dotProductDistanceImpl[TV, TIX] {
+func Distance[TV interfaces.VectorType](vectorLength int) *dotProductDistanceImpl[TV] {
 
-	n := DotProductNodeImpl[TV, TIX]{}
+	n := DotProductNodeImpl[TV]{}
 
-	ad := &dotProductDistanceImpl[TV, TIX]{
+	ad := &dotProductDistanceImpl[TV]{
 		vectorLength: vectorLength,
-		nodeSize: TIX(
+		nodeSize: int(
 			unsafe.Offsetof(n.v) +
 				(uintptr(vectorLength) * unsafe.Sizeof(TV(0))),
 		),
@@ -32,93 +30,91 @@ func Distance[TV interfaces.VectorType, TIX interfaces.IndexTypes](
 
 	// _K = (S) (((size_t) (_s - offsetof(Node, children))) / sizeof(S));
 	size := uintptr(ad.nodeSize) - unsafe.Offsetof(n.children)
-	ad.maxNumChildren = TIX(size / unsafe.Sizeof(n.children[0]))
+	ad.maxNumChildren = interfaces.ItemID(size / unsafe.Sizeof(n.children[0]))
 
 	return ad
 }
 
-func (dp *dotProductDistanceImpl[TV, TIX]) VectorLength() TIX {
+func (dp *dotProductDistanceImpl[TV]) VectorLength() int {
 	return dp.vectorLength
 }
 
-func (dp *dotProductDistanceImpl[TV, TIX]) MaxNumChildren() TIX {
+func (dp *dotProductDistanceImpl[TV]) MaxNumChildren() interfaces.ItemID {
 	return dp.maxNumChildren
 }
 
-func (dp *dotProductDistanceImpl[TV, TIX]) NodeSize() TIX {
+func (dp *dotProductDistanceImpl[TV]) NodeSize() int {
 	return dp.nodeSize
 }
 
-func (dp *dotProductDistanceImpl[TV, TIX]) MapNodeToMemory(
+func (dp *dotProductDistanceImpl[TV]) MapNodeToMemory(
 	mem unsafe.Pointer,
-	itemIndex TIX,
-) interfaces.Node[TV, TIX] {
-	pos := unsafe.Add(mem, itemIndex*dp.nodeSize)
+	itemIndex interfaces.ItemID,
+) interfaces.Node[TV] {
+	pos := unsafe.Add(mem, uintptr(itemIndex)*uintptr(dp.nodeSize))
 
-	return (*DotProductNodeImpl[TV, TIX])(pos)
+	return (*DotProductNodeImpl[TV])(pos)
 }
 
-func (dp *dotProductDistanceImpl[TV, TIX]) CreateSplit(
-	nodes []interfaces.Node[TV, TIX],
-	nodeSize TIX,
-	random interfaces.Random[TIX],
-	n interfaces.Node[TV, TIX],
+func (dp *dotProductDistanceImpl[TV]) CreateSplit(
+	nodes []interfaces.Node[TV],
+	nodeSize int,
+	random interfaces.Random,
+	n interfaces.Node[TV],
 ) {
 	// Allocate memory for two nodes, and use them as temporary nodes
 	p_mem := make([]byte, nodeSize)
 	q_mem := make([]byte, nodeSize)
 
-	p := (*DotProductNodeImpl[TV, TIX])(unsafe.Pointer(unsafe.SliceData(p_mem)))
-	q := (*DotProductNodeImpl[TV, TIX])(unsafe.Pointer(unsafe.SliceData(q_mem)))
+	p := (*DotProductNodeImpl[TV])(unsafe.Pointer(unsafe.SliceData(p_mem)))
+	q := (*DotProductNodeImpl[TV])(unsafe.Pointer(unsafe.SliceData(q_mem)))
 
-	distance.TwoMeans[TV, TIX](nodes, dp.vectorLength, random, true, p, q, dp)
+	distance.TwoMeans[TV](nodes, dp.vectorLength, random, true, p, q, dp)
 
 	nv := n.GetVector(dp.vectorLength)
 	qv := q.GetVector(dp.vectorLength)
 	pv := p.GetVector(dp.vectorLength)
 
-	for z := TIX(0); z < dp.vectorLength; z++ {
+	for z := 0; z < dp.vectorLength; z++ {
 		nv[z] = pv[z] - qv[z]
 	}
 
 	dp.Normalize(n)
 }
 
-func (dp *dotProductDistanceImpl[TV, TIX]) Normalize(node interfaces.Node[TV, TIX]) {
+func (dp *dotProductDistanceImpl[TV]) Normalize(node interfaces.Node[TV]) {
 	raw := node.GetRawVector()
 	norm := TV(vector.GetNormUnsafe(raw, dp.vectorLength))
 
 	if norm > 0 {
 		ptr := unsafe.Pointer(raw)
-		size := TIX(unsafe.Sizeof(TV(0)))
+		size := unsafe.Sizeof(TV(0))
 
-		for i := TIX(0); i < dp.vectorLength; i++ {
-			f := (*TV)(unsafe.Pointer(unsafe.Add(ptr, i*size)))
+		for i := 0; i < dp.vectorLength; i++ {
+			f := (*TV)(unsafe.Pointer(unsafe.Add(ptr, uintptr(i)*size)))
 			*f /= norm
 		}
 
-		node.(*DotProductNodeImpl[TV, TIX]).dot_factor /= norm
+		node.(*DotProductNodeImpl[TV]).dot_factor /= norm
 	}
 }
 
-func (dp *dotProductDistanceImpl[TV, TIX]) Margin(n interfaces.Node[TV, TIX], y []TV) TV {
+func (dp *dotProductDistanceImpl[TV]) Margin(n interfaces.Node[TV], y []TV) TV {
 	if len(y) == 0 {
 		panic("y is empty")
 	}
-
-	df := n.(*DotProductNodeImpl[TV, TIX]).dot_factor
 
 	return vector.DotUnsafe(
 		n.GetRawVector(),
 		(*TV)(unsafe.Pointer(unsafe.SliceData(y))),
 		dp.vectorLength,
-	) + (df * df)
+	)
 }
 
-func (dp *dotProductDistanceImpl[TV, TIX]) Side(
-	n interfaces.Node[TV, TIX],
+func (dp *dotProductDistanceImpl[TV]) Side(
+	n interfaces.Node[TV],
 	y []TV,
-	random interfaces.Random[TIX],
+	random interfaces.Random,
 ) interfaces.Side {
 
 	dot := dp.Margin(n, y)
@@ -134,34 +130,36 @@ func (dp *dotProductDistanceImpl[TV, TIX]) Side(
 	return random.NextSide()
 }
 
-func (dp *dotProductDistanceImpl[TV, _]) NormalizedDistance(distance TV) TV {
+func (dp *dotProductDistanceImpl[TV]) NormalizedDistance(distance TV) TV {
 	return -distance
 }
 
-func (dp *dotProductDistanceImpl[TV, TIX]) PQDistance(distance, margin TV, side interfaces.Side) TV {
+func (dp *dotProductDistanceImpl[TV]) PQDistance(distance, margin TV, side interfaces.Side) TV {
 	if side == interfaces.SideLeft {
 		margin = -margin
 	}
 	return TV(math.Min(float64(distance), float64(margin)))
 }
 
-func (dp *dotProductDistanceImpl[TV, TIX]) PQInitialValue() TV {
+func (dp *dotProductDistanceImpl[TV]) PQInitialValue() TV {
 	return TV(math.Inf(1))
 }
 
-func (dp *dotProductDistanceImpl[TV, TIX]) Distance(x interfaces.Node[TV, TIX], y interfaces.Node[TV, TIX]) TV {
+func (dp *dotProductDistanceImpl[TV]) Distance(x interfaces.Node[TV], y interfaces.Node[TV]) TV {
+	xn := x.(*DotProductNodeImpl[TV])
+	yn := y.(*DotProductNodeImpl[TV])
+
+	if xn.built || yn.built {
+		return -vector.DotUnsafe(x.GetRawVector(), y.GetRawVector(), dp.vectorLength)
+	}
+
 	pp := x.GetNorm()
 	qq := y.GetNorm()
 	xv := x.GetRawVector()
 	yv := y.GetRawVector()
 
-	// Include dot_factor (the extra augmented dimension from the Bachrach
-	// et al. transformation) in the distance computation.  In the C++
-	// implementation, dot_factor is stored as v[f] so the standard
-	// dot-product over f+1 elements includes it automatically.  In Go the
-	// field is stored separately, so we add it explicitly.
-	xdf := x.(*DotProductNodeImpl[TV, TIX]).dot_factor
-	ydf := y.(*DotProductNodeImpl[TV, TIX]).dot_factor
+	xdf := xn.dot_factor
+	ydf := yn.dot_factor
 
 	if pp == 0 {
 		pp = vector.DotUnsafe(xv, xv, dp.vectorLength) + xdf*xdf
@@ -184,13 +182,14 @@ func (dp *dotProductDistanceImpl[TV, TIX]) Distance(x interfaces.Node[TV, TIX], 
 	return 2.0
 }
 
-func (dp *dotProductDistanceImpl[TV, TIX]) PreProcess(nodes unsafe.Pointer, node_count TIX) {
+func (dp *dotProductDistanceImpl[TV]) PreProcess(nodes unsafe.Pointer, nodeCount interfaces.ItemID) {
 	// This uses a method from Microsoft Research for transforming inner product spaces to cosine/angular-compatible spaces.
 	// (Bachrach et al., 2014, see https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/XboxInnerProduct.pdf)
 
 	// Step one: compute the norm of each vector and store that in its extra dimension (f-1)
-	for i := TIX(0); i < node_count; i++ {
-		node := dp.MapNodeToMemory(nodes, i)
+	for i := 0; i < int(nodeCount); i++ {
+		node := dp.MapNodeToMemory(nodes, interfaces.ItemID(i))
+		dn := node.(*DotProductNodeImpl[TV])
 		nv := node.GetRawVector()
 		d := vector.DotUnsafe(nv, nv, dp.vectorLength)
 
@@ -199,24 +198,26 @@ func (dp *dotProductDistanceImpl[TV, TIX]) PreProcess(nodes unsafe.Pointer, node
 			norm = TV(math.Sqrt(float64(d)))
 		}
 
-		node.(*DotProductNodeImpl[TV, TIX]).dot_factor = norm
+		dn.dot_factor = norm
+		dn.built = false
 	}
 
 	// Step two: find the maximum norm
 	max_norm := TV(0)
 
-	for i := TIX(0); i < node_count; i++ {
-		node := dp.MapNodeToMemory(nodes, i)
-		df := node.(*DotProductNodeImpl[TV, TIX]).dot_factor
+	for i := 0; i < int(nodeCount); i++ {
+		node := dp.MapNodeToMemory(nodes, interfaces.ItemID(i))
+		df := node.(*DotProductNodeImpl[TV]).dot_factor
 
 		if df > max_norm {
 			max_norm = df
 		}
 	}
 	// Step three: set each vector's extra dimension to sqrt(max_norm^2 - norm^2)
-	for i := TIX(0); i < node_count; i++ {
-		node := dp.MapNodeToMemory(nodes, i)
-		node_norm := node.(*DotProductNodeImpl[TV, TIX]).dot_factor
+	for i := 0; i < int(nodeCount); i++ {
+		node := dp.MapNodeToMemory(nodes, interfaces.ItemID(i))
+		dn := node.(*DotProductNodeImpl[TV])
+		node_norm := dn.dot_factor
 
 		squared_norm_diff := TV(math.Pow(float64(max_norm), 2.0)) - TV(math.Pow(float64(node_norm), 2.0))
 
@@ -225,15 +226,57 @@ func (dp *dotProductDistanceImpl[TV, TIX]) PreProcess(nodes unsafe.Pointer, node
 			dot_factor = TV(math.Sqrt(float64(squared_norm_diff)))
 		}
 
-		node.(*DotProductNodeImpl[TV, TIX]).dot_factor = dot_factor
+		dn.SetNorm(max_norm * max_norm)
+		dn.dot_factor = dot_factor
 	}
 }
 
 // InitNode will initialize the node by setting the norm to the value based on the distance type.
-func (dp *dotProductDistanceImpl[TV, TIX]) InitNode(node interfaces.Node[TV, TIX]) {
-	// DO NOTHING
+func (dp *dotProductDistanceImpl[TV]) InitNode(node interfaces.Node[TV]) {
+	dn := node.(*DotProductNodeImpl[TV])
+	dn.built = false
+	dn.SetNorm(
+		vector.DotUnsafe(node.GetRawVector(), node.GetRawVector(), dp.vectorLength) +
+			dn.dot_factor*dn.dot_factor,
+	)
 }
 
-func (dp *dotProductDistanceImpl[TV, TIX]) Name() string {
+func (dp *dotProductDistanceImpl[TV]) MeanNorm(node interfaces.Node[TV], vectorLength int) TV {
+	dn := node.(*DotProductNodeImpl[TV])
+	return TV(math.Sqrt(float64(
+		vector.DotUnsafe(node.GetRawVector(), node.GetRawVector(), vectorLength) +
+			dn.dot_factor*dn.dot_factor,
+	)))
+}
+
+func (dp *dotProductDistanceImpl[TV]) UpdateMean(
+	mean interfaces.Node[TV],
+	newNode interfaces.Node[TV],
+	norm TV,
+	count int,
+	vectorLength int,
+) {
+	mv := mean.GetVector(vectorLength)
+	nv := newNode.GetVector(vectorLength)
+	c := TV(count)
+	next := TV(count + 1)
+
+	for z := 0; z < vectorLength; z++ {
+		mv[z] = (mv[z]*c + nv[z]/norm) / next
+	}
+
+	md := mean.(*DotProductNodeImpl[TV])
+	nd := newNode.(*DotProductNodeImpl[TV])
+	md.dot_factor = (md.dot_factor*c + nd.dot_factor/norm) / next
+}
+
+func (dp *dotProductDistanceImpl[TV]) PostProcess(nodes unsafe.Pointer, nodeCount interfaces.ItemID) {
+	for i := 0; i < int(nodeCount); i++ {
+		node := dp.MapNodeToMemory(nodes, interfaces.ItemID(i))
+		node.(*DotProductNodeImpl[TV]).built = true
+	}
+}
+
+func (dp *dotProductDistanceImpl[TV]) Name() string {
 	return "dotproduct"
 }

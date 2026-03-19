@@ -8,24 +8,27 @@ import (
 )
 
 func TestSimple(t *testing.T) {
-	pq := sort.NewPriorityQueue[float32, int]()
+	pq := sort.NewPriorityQueue[float32]()
 
 	pq.Push(1.1, 1)
 	pq.Push(4.4, 4)
 	pq.Push(3.3, 3)
 	pq.Push(2.2, 2)
 
-	expectedSecond := int(1)
-	expectFirst := float32(1.1)
+	expected := []struct {
+		first  float32
+		second int32
+	}{
+		{4.4, 4},
+		{3.3, 3},
+		{2.2, 2},
+		{1.1, 1},
+	}
 
-	for pq.Len() > 0 {
+	for i := 0; pq.Len() > 0; i++ {
 		item := pq.Pop()
 
-		assert.Equal(t, expectFirst, item.First)
-		assert.Equal(t, expectedSecond, item.Second)
-
-		expectedSecond++
-		expectFirst += 1.1
-		expectFirst = float32(int(expectFirst*10)) / 10
+		assert.Equal(t, expected[i].first, item.First)
+		assert.Equal(t, expected[i].second, item.Second)
 	}
 }

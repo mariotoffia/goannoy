@@ -31,13 +31,13 @@ func TestUpstreamAngularGetNnsByVector(t *testing.T) {
 	ctx := idx.CreateContext()
 
 	r, _ := idx.GetNnsByVector([]float32{3, 2, 1}, 3, -1, ctx)
-	assert.Equal(t, []uint32{2, 1, 0}, r)
+	assert.Equal(t, []int32{2, 1, 0}, r)
 
 	r, _ = idx.GetNnsByVector([]float32{1, 2, 3}, 3, -1, ctx)
-	assert.Equal(t, []uint32{0, 1, 2}, r)
+	assert.Equal(t, []int32{0, 1, 2}, r)
 
 	r, _ = idx.GetNnsByVector([]float32{2, 0, 1}, 3, -1, ctx)
-	assert.Equal(t, []uint32{2, 0, 1}, r)
+	assert.Equal(t, []int32{2, 0, 1}, r)
 }
 
 // test_get_nns_by_item
@@ -53,10 +53,10 @@ func TestUpstreamAngularGetNnsByItem(t *testing.T) {
 	ctx := idx.CreateContext()
 
 	r, _ := idx.GetNnsByItem(0, 3, -1, ctx)
-	assert.Equal(t, []uint32{0, 1, 2}, r)
+	assert.Equal(t, []int32{0, 1, 2}, r)
 
 	r, _ = idx.GetNnsByItem(1, 3, -1, ctx)
-	assert.Equal(t, []uint32{1, 0, 2}, r)
+	assert.Equal(t, []int32{1, 0, 2}, r)
 }
 
 // test_dist: angular distance between [0,1] and [1,1]
@@ -127,10 +127,10 @@ func TestUpstreamAngularGetNnsSearchK(t *testing.T) {
 	ctx := idx.CreateContext()
 
 	r, _ := idx.GetNnsByItem(0, 3, 10, ctx)
-	assert.Equal(t, []uint32{0, 1, 2}, r)
+	assert.Equal(t, []int32{0, 1, 2}, r)
 
 	r, _ = idx.GetNnsByVector([]float32{3, 2, 1}, 3, 10, ctx)
-	assert.Equal(t, []uint32{2, 1, 0}, r)
+	assert.Equal(t, []int32{2, 1, 0}, r)
 }
 
 // test_include_dists: opposite vectors have distance ~2.0
@@ -153,9 +153,47 @@ func TestUpstreamAngularIncludeDists(t *testing.T) {
 
 	ctx := idx.CreateContext()
 	indices, dists := idx.GetNnsByItem(0, 2, 10, ctx)
-	assert.Equal(t, []uint32{0, 1}, indices)
+	assert.Equal(t, []int32{0, 1}, indices)
 	assert.InDelta(t, 0.0, dists[0], 1e-3)
 	assert.InDelta(t, 2.0, dists[1], 1e-3)
+}
+
+// test_include_dists_check_ranges
+func TestUpstreamAngularIncludeDistsCheckRanges(t *testing.T) {
+	f := 3
+	nItems := 5000
+
+	idx := angularIdx(f)
+	defer idx.Close()
+
+	rng := rand.New(rand.NewSource(12345))
+	for j := 0; j < nItems; j++ {
+		require.NoError(t, idx.AddItem(int32(j), []float32{
+			float32(rng.NormFloat64()),
+			float32(rng.NormFloat64()),
+			float32(rng.NormFloat64()),
+		}))
+	}
+
+	require.NoError(t, idx.Build(10, -1))
+
+	ctx := idx.CreateContext()
+	_, dists := idx.GetNnsByItem(0, nItems, -1, ctx)
+	require.NotEmpty(t, dists)
+
+	minDist := dists[0]
+	maxDist := dists[0]
+	for _, dist := range dists[1:] {
+		if dist < minDist {
+			minDist = dist
+		}
+		if dist > maxDist {
+			maxDist = dist
+		}
+	}
+
+	assert.LessOrEqual(t, maxDist, float32(2.0))
+	assert.InDelta(t, 0.0, minDist, 1e-6)
 }
 
 // test_only_one_item: single item, high dim, save/load roundtrip
@@ -191,7 +229,32 @@ func TestUpstreamAngularOnlyOneItem(t *testing.T) {
 	}
 
 	result, _ := idx2.GetNnsByVector(query, 50, -1, ctx)
-	assert.Equal(t, []uint32{0}, result)
+	assert.Equal(t, []int32{0}, result)
+}
+
+// test_no_items: empty index roundtrip
+func TestUpstreamAngularNoItems(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "empty.ann")
+
+	idx := angularIdxMmap(100)
+	defer idx.Close()
+
+	idx.Build(10, -1)
+
+	err := idx.Save(path)
+	require.NoError(t, err)
+
+	idx2 := angularIdxMmap(100)
+	defer idx2.Close()
+
+	err = idx2.Load(path)
+	require.NoError(t, err)
+
+	ctx := idx2.CreateContext()
+	result, dists := idx2.GetNnsByVector(make([]float32, 100), 50, -1, ctx)
+	assert.Empty(t, result)
+	assert.Empty(t, dists)
 }
 
 // test_single_vector: single vector with distances
@@ -209,7 +272,7 @@ func TestUpstreamAngularSingleVector(t *testing.T) {
 
 	ctx := idx.CreateContext()
 	indices, dists := idx.GetNnsByVector([]float32{1, 0, 0}, 3, -1, ctx)
-	assert.Equal(t, []uint32{0}, indices)
+	assert.Equal(t, []int32{0}, indices)
 	assert.InDelta(t, 0.0, dists[0]*dists[0], 1e-5)
 }
 
@@ -264,7 +327,7 @@ func TestUpstreamAngularItemVectorAfterSave(t *testing.T) {
 
 	ctx := idx.CreateContext()
 	r, _ := idx.GetNnsByItem(1, 999, -1, ctx)
-	assertContainsAll(t, r, []uint32{1, 2, 3})
+	assertContainsAll(t, r, []int32{1, 2, 3})
 
 	err := idx.Save(path)
 	require.NoError(t, err)
@@ -274,7 +337,7 @@ func TestUpstreamAngularItemVectorAfterSave(t *testing.T) {
 
 	ctx2 := idx.CreateContext()
 	r2, _ := idx.GetNnsByItem(1, 999, -1, ctx2)
-	assertContainsAll(t, r2, []uint32{1, 2, 3})
+	assertContainsAll(t, r2, []int32{1, 2, 3})
 }
 
 // test_get_lots_of_nns: requesting more NNs than items returns all items
@@ -294,7 +357,7 @@ func TestUpstreamGetLotsOfNns(t *testing.T) {
 	ctx := idx.CreateContext()
 	for j := 0; j < 100; j++ {
 		r, _ := idx.GetNnsByItem(0, 999999, -1, ctx)
-		assert.Equal(t, []uint32{0}, r)
+		assert.Equal(t, []int32{0}, r)
 	}
 }
 
@@ -312,14 +375,14 @@ func TestUpstreamSaveWithoutBuild(t *testing.T) {
 		for j := range v {
 			v[j] = float32(rng.NormFloat64())
 		}
-		idx.AddItem(uint32(i), v)
+		require.NoError(t, idx.AddItem(int32(i), v))
 	}
 
 	err := idx.Save(path)
 	assert.Error(t, err, "saving unbuilt index should error")
 }
 
-// test_build_twice: building twice must panic
+// test_build_twice: building twice must return an error
 func TestUpstreamBuildTwice(t *testing.T) {
 	idx := angularIdx(10)
 	defer idx.Close()
@@ -330,13 +393,11 @@ func TestUpstreamBuildTwice(t *testing.T) {
 		for j := range v {
 			v[j] = float32(rng.NormFloat64())
 		}
-		idx.AddItem(uint32(i), v)
+		require.NoError(t, idx.AddItem(int32(i), v))
 	}
-	idx.Build(10, -1)
+	require.NoError(t, idx.Build(10, -1))
 
-	assert.Panics(t, func() {
-		idx.Build(10, -1)
-	}, "building twice should panic")
+	assert.Error(t, idx.Build(10, -1), "building twice should return an error")
 }
 
 // test_large_index: 10k items, paired close points. Approximate search so
@@ -365,11 +426,11 @@ func TestUpstreamAngularLargeIndex(t *testing.T) {
 			y[z] = f2*p[z] + float32(rng.NormFloat64())*1e-2
 		}
 
-		idx.AddItem(uint32(j), x)
-		idx.AddItem(uint32(j+1), y)
+		require.NoError(t, idx.AddItem(int32(j), x))
+		require.NoError(t, idx.AddItem(int32(j+1), y))
 	}
 
-	idx.Build(10, -1)
+	require.NoError(t, idx.Build(10, -1))
 
 	ctx := idx.CreateContext()
 	correct := 0
@@ -377,14 +438,14 @@ func TestUpstreamAngularLargeIndex(t *testing.T) {
 	searchK := nItems // generous search budget
 
 	for j := 0; j < nItems; j += 2 {
-		r, _ := idx.GetNnsByItem(uint32(j), 2, searchK, ctx)
-		if len(r) >= 2 && r[0] == uint32(j) && r[1] == uint32(j+1) {
+		r, _ := idx.GetNnsByItem(int32(j), 2, searchK, ctx)
+		if len(r) >= 2 && r[0] == int32(j) && r[1] == int32(j+1) {
 			correct++
 		}
 		total++
 
-		r2, _ := idx.GetNnsByItem(uint32(j+1), 2, searchK, ctx)
-		if len(r2) >= 2 && r2[0] == uint32(j+1) && r2[1] == uint32(j) {
+		r2, _ := idx.GetNnsByItem(int32(j+1), 2, searchK, ctx)
+		if len(r2) >= 2 && r2[0] == int32(j+1) && r2[1] == int32(j) {
 			correct++
 		}
 		total++
@@ -417,15 +478,15 @@ func TestUpstreamAngularDistanceConsistency(t *testing.T) {
 				break
 			}
 		}
-		idx.AddItem(uint32(j), v)
+		require.NoError(t, idx.AddItem(int32(j), v))
 	}
 
-	idx.Build(10, -1)
+	require.NoError(t, idx.Build(10, -1))
 
 	ctx := idx.CreateContext()
 
 	for trial := 0; trial < 100; trial++ {
-		a := uint32(rng.Intn(n))
+		a := int32(rng.Intn(n))
 		indices, dists := idx.GetNnsByItem(a, 100, -1, ctx)
 
 		for k, b := range indices {
@@ -460,9 +521,9 @@ func TestUpstreamSaveTwice(t *testing.T) {
 		for j := range v {
 			v[j] = float32(rng.NormFloat64())
 		}
-		idx.AddItem(uint32(i), v)
+		require.NoError(t, idx.AddItem(int32(i), v))
 	}
-	idx.Build(10, -1)
+	require.NoError(t, idx.Build(10, -1))
 
 	err := idx.Save(path1)
 	require.NoError(t, err)
@@ -485,10 +546,9 @@ func TestUpstreamAngularGetNnsWithDistances(t *testing.T) {
 	ctx := idx.CreateContext()
 	l, d := idx.GetNnsByItem(0, 3, -1, ctx)
 
-	assert.Equal(t, []uint32{0, 1, 2}, l)
+	assert.Equal(t, []int32{0, 1, 2}, l)
 	assert.InDelta(t, 0.0, d[0], 1e-5, "distance to self should be ~0")
 	// Orthogonal vectors have angular distance = sqrt(2)
 	assert.InDelta(t, math.Sqrt(2.0), float64(d[1]), 1e-3)
 	assert.InDelta(t, math.Sqrt(2.0), float64(d[2]), 1e-3)
 }
-

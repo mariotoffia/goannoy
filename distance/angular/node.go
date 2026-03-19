@@ -14,14 +14,14 @@ import (
 // - A vector associated with it
 // - Two children
 // All nodes occupy the same amount of memory
-type AngularNodeImpl[TV interfaces.VectorType, TIX interfaces.IndexTypes] struct {
+type AngularNodeImpl[TV interfaces.VectorType] struct {
 	// n_descendants is the number of descendants of this node.
 	//
 	// * All nodes with n_descendants == 1 are leaf nodes.
 	// * For nodes with n_descendants == 1 the vector is a data point.
 	// * For nodes with n_descendants > K the vector is the normal of the split plane.
 	//   Thus, the "T norm" is extracted from the children array address.
-	n_descendants TIX
+	n_descendants interfaces.ItemID
 	// children will contain indexes to other nodes when n_descendants > 1.
 	//
 	// A memory optimization is when n_descendants >= 2 (and less than K, where K is the
@@ -36,19 +36,19 @@ type AngularNodeImpl[TV interfaces.VectorType, TIX interfaces.IndexTypes] struct
 	//	T norm;
 	// };
 	// ```
-	children [2]TIX
+	children [2]interfaces.ItemID
 	v        [0]TV
 }
 
-func (n *AngularNodeImpl[TV, TIX]) GetRawVector() *TV {
+func (n *AngularNodeImpl[TV]) GetRawVector() *TV {
 	return (*TV)(unsafe.Pointer(&n.v))
 }
 
-func (n *AngularNodeImpl[TV, TIX]) GetVector(vectorLength TIX) []TV {
+func (n *AngularNodeImpl[TV]) GetVector(vectorLength int) []TV {
 	return unsafe.Slice((*TV)(unsafe.Pointer(&n.v)), vectorLength)
 }
 
-func (n *AngularNodeImpl[TV, TIX]) SetVector(v []TV) {
+func (n *AngularNodeImpl[TV]) SetVector(v []TV) {
 	dst := unsafe.Pointer(&n.v)
 	src := unsafe.Pointer(unsafe.SliceData(v))
 	size := uintptr(len(v)) * unsafe.Sizeof(TV(0))
@@ -56,19 +56,19 @@ func (n *AngularNodeImpl[TV, TIX]) SetVector(v []TV) {
 	copy((*[1 << 30]byte)(dst)[:size], (*[1 << 30]byte)(src)[:size])
 }
 
-func (n *AngularNodeImpl[TV, TIX]) GetRawChildren() *TIX {
-	return (*TIX)(unsafe.Pointer(&n.children))
+func (n *AngularNodeImpl[TV]) GetRawChildren() *interfaces.ItemID {
+	return (*interfaces.ItemID)(unsafe.Pointer(&n.children))
 }
 
-func (n *AngularNodeImpl[TV, TIX]) GetChildren() []TIX {
+func (n *AngularNodeImpl[TV]) GetChildren() []interfaces.ItemID {
 	if n.n_descendants == 0 {
 		return nil
 	}
 
-	return unsafe.Slice((*TIX)(unsafe.Pointer(&n.children)), n.n_descendants)
+	return unsafe.Slice((*interfaces.ItemID)(unsafe.Pointer(&n.children)), n.n_descendants)
 }
 
-func (n *AngularNodeImpl[TV, TIX]) SetChildren(children []TIX) {
+func (n *AngularNodeImpl[TV]) SetChildren(children []interfaces.ItemID) {
 	dst := unsafe.Pointer(&n.children)
 	src := unsafe.Pointer(unsafe.SliceData(children))
 	size := uintptr(len(children)) * unsafe.Sizeof(n.children[0])
@@ -76,18 +76,18 @@ func (n *AngularNodeImpl[TV, TIX]) SetChildren(children []TIX) {
 	copy((*[1 << 30]byte)(dst)[:size], (*[1 << 30]byte)(src)[:size])
 }
 
-func (n *AngularNodeImpl[TV, TIX]) GetNumberOfDescendants() TIX {
+func (n *AngularNodeImpl[TV]) GetNumberOfDescendants() interfaces.ItemID {
 	return n.n_descendants
 }
 
-func (n *AngularNodeImpl[TV, TIX]) SetNumberOfDescendants(nDescendants TIX) {
+func (n *AngularNodeImpl[TV]) SetNumberOfDescendants(nDescendants interfaces.ItemID) {
 	n.n_descendants = nDescendants
 }
 
-func (n *AngularNodeImpl[TV, TIX]) GetNorm() TV {
+func (n *AngularNodeImpl[TV]) GetNorm() TV {
 	return *(*TV)(unsafe.Pointer(&n.children))
 }
 
-func (n *AngularNodeImpl[TV, TIX]) SetNorm(norm TV) {
+func (n *AngularNodeImpl[TV]) SetNorm(norm TV) {
 	*(*TV)(unsafe.Pointer(&n.children)) = norm
 }

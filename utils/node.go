@@ -6,9 +6,7 @@ import (
 	"github.com/mariotoffia/goannoy/interfaces"
 )
 
-func GetPtr[TV interfaces.VectorType, TIX interfaces.IndexTypes](
-	node interfaces.Node[TV, TIX],
-) unsafe.Pointer {
+func GetPtr[TV interfaces.VectorType](node interfaces.Node[TV]) unsafe.Pointer {
 	// iface is a fake interface type used to access the underlying data of an interface.
 	type iface struct {
 		typ, data unsafe.Pointer
@@ -18,10 +16,12 @@ func GetPtr[TV interfaces.VectorType, TIX interfaces.IndexTypes](
 	return nodeInterface.data
 }
 
-// CopyNode copies the source node to the destination node. Note that the destination node
-// must be of the same type and take up the same amount of memory as the source node.
-func CopyNode[TV interfaces.VectorType, TIX interfaces.IndexTypes](
-	dst, src interfaces.Node[TV, TIX], size TIX,
+// CopyNode copies the source node to the destination node. The size parameter
+// must be the full node size in bytes (e.g. from Distance.NodeSize()), NOT the
+// vector element count. The destination node must be of the same type and take
+// up the same amount of memory as the source node.
+func CopyNode[TV interfaces.VectorType](
+	dst, src interfaces.Node[TV], size int,
 ) {
 	ptrSrc := GetPtr(src)
 	ptrDst := GetPtr(dst)

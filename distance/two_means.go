@@ -14,18 +14,18 @@ import (
 // can't motivate it well. The basic idea is to keep two centroids and assign
 // points to either one of them. We weight each centroid by the number of points
 // assigned to it, so to balance it.
-func TwoMeans[TV interfaces.VectorType, TIX interfaces.IndexTypes](
-	nodes []interfaces.Node[TV, TIX],
-	vectorLength TIX,
-	random interfaces.Random[TIX],
+func TwoMeans[TV interfaces.VectorType](
+	nodes []interfaces.Node[TV],
+	vectorLength int,
+	random interfaces.Random,
 	cosine bool,
-	p, q interfaces.Node[TV, TIX],
-	distance interfaces.Distance[TV, TIX],
+	p, q interfaces.Node[TV],
+	distance interfaces.Distance[TV],
 ) {
 
 	const iterationSteps = 200
 
-	nodeCount := TIX(len(nodes))
+	nodeCount := interfaces.ItemID(len(nodes))
 
 	i := random.NextIndex(nodeCount)
 	j := random.NextIndex(nodeCount - 1)
@@ -34,8 +34,8 @@ func TwoMeans[TV interfaces.VectorType, TIX interfaces.IndexTypes](
 		j++ // ensure that i != j
 	}
 
-	utils.CopyNode(p, nodes[i], vectorLength)
-	utils.CopyNode(q, nodes[j], vectorLength)
+	utils.CopyNode(p, nodes[i], distance.NodeSize())
+	utils.CopyNode(q, nodes[j], distance.NodeSize())
 
 	if cosine {
 		distance.Normalize(p)
@@ -60,7 +60,13 @@ func TwoMeans[TV interfaces.VectorType, TIX interfaces.IndexTypes](
 		vec := nodes[k].GetVector(vectorLength)
 
 		if cosine {
-			norm = vector.GetNorm(vec, vectorLength)
+			if nh, ok := distance.(interface {
+				MeanNorm(node interfaces.Node[TV], vectorLength int) TV
+			}); ok {
+				norm = nh.MeanNorm(nodes[k], vectorLength)
+			} else {
+				norm = vector.GetNorm(vec, vectorLength)
+			}
 
 			if !(norm > 0) {
 				continue
@@ -70,16 +76,28 @@ func TwoMeans[TV interfaces.VectorType, TIX interfaces.IndexTypes](
 		}
 
 		if di < dj {
-			for z := TIX(0); z < vectorLength; z++ {
-				pvec[z] = (pvec[z]*TV(ic) + vec[z]/norm) / TV(ic+1)
+			if mh, ok := distance.(interface {
+				UpdateMean(mean interfaces.Node[TV], newNode interfaces.Node[TV], norm TV, count int, vectorLength int)
+			}); ok {
+				mh.UpdateMean(p, nodes[k], norm, int(ic), vectorLength)
+			} else {
+				for z := 0; z < vectorLength; z++ {
+					pvec[z] = (pvec[z]*TV(ic) + vec[z]/norm) / TV(ic+1)
+				}
 			}
 
 			distance.InitNode(p)
 			ic++
 
 		} else if dj < di {
-			for z := TIX(0); z < vectorLength; z++ {
-				qvec[z] = (qvec[z]*TV(jc) + vec[z]/norm) / TV(jc+1)
+			if mh, ok := distance.(interface {
+				UpdateMean(mean interfaces.Node[TV], newNode interfaces.Node[TV], norm TV, count int, vectorLength int)
+			}); ok {
+				mh.UpdateMean(q, nodes[k], norm, int(jc), vectorLength)
+			} else {
+				for z := 0; z < vectorLength; z++ {
+					qvec[z] = (qvec[z]*TV(jc) + vec[z]/norm) / TV(jc+1)
+				}
 			}
 
 			distance.InitNode(q)

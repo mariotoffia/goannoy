@@ -7,17 +7,17 @@ import (
 	"github.com/mariotoffia/goannoy/interfaces"
 )
 
-func SortSlice[TIX interfaces.IndexTypes](slice []TIX) {
+func SortSlice(slice []interfaces.ItemID) {
 	sorty.SortSlice(slice)
 }
 
-func SortSlice2[TIX interfaces.IndexTypes](slice []TIX) {
+func SortSlice2(slice []interfaces.ItemID) {
 	sort.Slice(slice, func(i, j int) bool {
 		return slice[i] < slice[j]
 	})
 }
 
-func SortSlice3[TIX interfaces.IndexTypes](slice []TIX) {
+func SortSlice3(slice []interfaces.ItemID) {
 	len := len(slice)
 
 	if len > 500 {
@@ -29,8 +29,8 @@ func SortSlice3[TIX interfaces.IndexTypes](slice []TIX) {
 	}
 }
 
-func SortPairs[TV interfaces.VectorType, TIX interfaces.IndexTypes](
-	pairs []*interfaces.Pair[TV, TIX],
+func SortPairs[TV interfaces.VectorType](
+	pairs []*interfaces.Pair[TV],
 ) {
 	sort.Slice(pairs, func(i, j int) bool {
 		return pairs[i].Less(pairs[j])
@@ -50,7 +50,7 @@ func SortPairs[TV interfaces.VectorType, TIX interfaces.IndexTypes](
 	*/
 }
 
-func SortPairs2[TV interfaces.VectorType, TIX interfaces.IndexTypes](arr interfaces.Pairs[TV, TIX]) {
+func SortPairs2[TV interfaces.VectorType](arr interfaces.Pairs[TV]) {
 	n := arr.Len()
 
 	for i := n/2 - 1; i >= 0; i-- {
@@ -63,7 +63,7 @@ func SortPairs2[TV interfaces.VectorType, TIX interfaces.IndexTypes](arr interfa
 	}
 }
 
-func heapify[TV interfaces.VectorType, TIX interfaces.IndexTypes](arr interfaces.Pairs[TV, TIX], n, i int) {
+func heapify[TV interfaces.VectorType](arr interfaces.Pairs[TV], n, i int) {
 	largest := i
 	left := 2*i + 1
 	right := 2*i + 2

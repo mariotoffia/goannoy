@@ -14,7 +14,7 @@ import (
 // TestOneItemBuildSearchAngular verifies that searching a 1-item index
 // works without Save/Load.
 func TestOneItemBuildSearchAngular(t *testing.T) {
-	idx := builder.Index[float32, uint32]().
+	idx := builder.Index().
 		AngularDistance(3).
 		SingleWorkerPolicy().
 		Build()
@@ -27,7 +27,7 @@ func TestOneItemBuildSearchAngular(t *testing.T) {
 	result, distances := idx.GetNnsByVector([]float32{1.0, 0.0, 0.0}, 1, -1, ctx)
 
 	require.Len(t, result, 1)
-	assert.Equal(t, uint32(0), result[0])
+	assert.Equal(t, int32(0), result[0])
 	require.Len(t, distances, 1)
 }
 
@@ -38,7 +38,7 @@ func TestOneItemSaveLoadSearchAngular(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "index.ann")
 
-	idx := builder.Index[float32, uint32]().
+	idx := builder.Index().
 		AngularDistance(3).
 		SingleWorkerPolicy().
 		MmapIndexAllocator().
@@ -51,7 +51,7 @@ func TestOneItemSaveLoadSearchAngular(t *testing.T) {
 	err := idx.Save(path)
 	require.NoError(t, err)
 
-	idx2 := builder.Index[float32, uint32]().
+	idx2 := builder.Index().
 		AngularDistance(3).
 		SingleWorkerPolicy().
 		MmapIndexAllocator().
@@ -65,7 +65,7 @@ func TestOneItemSaveLoadSearchAngular(t *testing.T) {
 	result, distances := idx2.GetNnsByVector([]float32{0.5, 0.5, 0.0}, 1, -1, ctx)
 
 	require.Len(t, result, 1)
-	assert.Equal(t, uint32(0), result[0])
+	assert.Equal(t, int32(0), result[0])
 	require.Len(t, distances, 1)
 }
 
@@ -74,7 +74,7 @@ func TestTwoItemSaveLoadSearchAngular(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "index.ann")
 
-	idx := builder.Index[float32, uint32]().
+	idx := builder.Index().
 		AngularDistance(3).
 		SingleWorkerPolicy().
 		MmapIndexAllocator().
@@ -88,7 +88,7 @@ func TestTwoItemSaveLoadSearchAngular(t *testing.T) {
 	err := idx.Save(path)
 	require.NoError(t, err)
 
-	idx2 := builder.Index[float32, uint32]().
+	idx2 := builder.Index().
 		AngularDistance(3).
 		SingleWorkerPolicy().
 		MmapIndexAllocator().
@@ -102,7 +102,7 @@ func TestTwoItemSaveLoadSearchAngular(t *testing.T) {
 	result, distances := idx2.GetNnsByVector([]float32{1.0, 0.0, 0.0}, 2, -1, ctx)
 
 	require.Len(t, result, 2)
-	assert.Equal(t, uint32(0), result[0], "closest item should be 0")
+	assert.Equal(t, int32(0), result[0], "closest item should be 0")
 	require.Len(t, distances, 2)
 }
 
@@ -129,7 +129,7 @@ func testSmallIndexSaveLoadSearch(t *testing.T, nItems, nTrees int) {
 	path := filepath.Join(dir, "index.ann")
 	dim := 3
 
-	idx := builder.Index[float32, uint32]().
+	idx := builder.Index().
 		AngularDistance(dim).
 		SingleWorkerPolicy().
 		MmapIndexAllocator().
@@ -141,15 +141,15 @@ func testSmallIndexSaveLoadSearch(t *testing.T, nItems, nTrees int) {
 		v := make([]float32, dim)
 		v[i%dim] = 1.0
 		vectors[i] = v
-		idx.AddItem(uint32(i), v)
+		require.NoError(t, idx.AddItem(int32(i), v))
 	}
 
-	idx.Build(nTrees, 1)
+	require.NoError(t, idx.Build(nTrees, 1))
 
 	err := idx.Save(path)
 	require.NoError(t, err)
 
-	idx2 := builder.Index[float32, uint32]().
+	idx2 := builder.Index().
 		AngularDistance(dim).
 		SingleWorkerPolicy().
 		MmapIndexAllocator().
@@ -178,8 +178,8 @@ func TestSearchResultsMatchAfterLoad(t *testing.T) {
 	path := filepath.Join(dir, "index.ann")
 	dim := 3
 
-	mkIndex := func() interfaces.AnnoyIndex[float32, uint32] {
-		return builder.Index[float32, uint32]().
+	mkIndex := func() interfaces.AnnoyIndex[float32] {
+		return builder.Index().
 			AngularDistance(dim).
 			SingleWorkerPolicy().
 			MmapIndexAllocator().
@@ -227,7 +227,7 @@ func TestOneItemSaveLoadSearchUsingBuilderReproducer(t *testing.T) {
 	path := filepath.Join(dir, "index.ann")
 	dim := 3
 
-	idx := builder.Index[float32, uint32]().
+	idx := builder.Index().
 		AngularDistance(dim).
 		UseMultiWorkerPolicy().
 		MmapIndexAllocator().
@@ -240,7 +240,7 @@ func TestOneItemSaveLoadSearchUsingBuilderReproducer(t *testing.T) {
 	require.NoError(t, err)
 	idx.Close()
 
-	idx2 := builder.Index[float32, uint32]().
+	idx2 := builder.Index().
 		AngularDistance(dim).
 		UseMultiWorkerPolicy().
 		MmapIndexAllocator().
@@ -254,7 +254,7 @@ func TestOneItemSaveLoadSearchUsingBuilderReproducer(t *testing.T) {
 	ids, dists := idx2.GetNnsByVector([]float32{0.5, 0.5, 0.0}, 1, -1, ctx)
 
 	require.Len(t, ids, 1)
-	assert.Equal(t, uint32(0), ids[0])
+	assert.Equal(t, int32(0), ids[0])
 	require.Len(t, dists, 1)
 	fmt.Println(ids, dists)
 }
@@ -267,7 +267,7 @@ func TestSmallIndexAllItemsReturned(t *testing.T) {
 	dim := 10
 	nItems := 5
 
-	idx := builder.Index[float32, uint32]().
+	idx := builder.Index().
 		AngularDistance(dim).
 		SingleWorkerPolicy().
 		MmapIndexAllocator().
@@ -279,15 +279,15 @@ func TestSmallIndexAllItemsReturned(t *testing.T) {
 		v := make([]float32, dim)
 		v[i%dim] = 1.0
 		vectors[i] = v
-		idx.AddItem(uint32(i), v)
+		require.NoError(t, idx.AddItem(int32(i), v))
 	}
 
-	idx.Build(2, 1)
+	require.NoError(t, idx.Build(2, 1))
 
 	err := idx.Save(path)
 	require.NoError(t, err)
 
-	idx2 := builder.Index[float32, uint32]().
+	idx2 := builder.Index().
 		AngularDistance(dim).
 		SingleWorkerPolicy().
 		MmapIndexAllocator().
@@ -305,12 +305,12 @@ func TestSmallIndexAllItemsReturned(t *testing.T) {
 		"all %d items must be returned after Save/Load", nItems)
 
 	// Verify all item IDs are present
-	seen := make(map[uint32]bool)
+	seen := make(map[int32]bool)
 	for _, id := range result {
 		seen[id] = true
 	}
 	for i := 0; i < nItems; i++ {
-		assert.True(t, seen[uint32(i)], "item %d missing from results", i)
+		assert.True(t, seen[int32(i)], "item %d missing from results", i)
 	}
 }
 
@@ -318,7 +318,7 @@ func BenchmarkSmallIndexSearch(b *testing.B) {
 	dir := b.TempDir()
 	path := filepath.Join(dir, "index.ann")
 
-	idx := builder.Index[float32, uint32]().
+	idx := builder.Index().
 		AngularDistance(3).
 		SingleWorkerPolicy().
 		MmapIndexAllocator().
@@ -328,14 +328,14 @@ func BenchmarkSmallIndexSearch(b *testing.B) {
 	for i := 0; i < 5; i++ {
 		v := make([]float32, 3)
 		v[i%3] = 1.0
-		idx.AddItem(uint32(i), v)
+		require.NoError(b, idx.AddItem(int32(i), v))
 	}
-	idx.Build(3, 1)
+	require.NoError(b, idx.Build(3, 1))
 
 	err := idx.Save(path)
 	require.NoError(b, err)
 
-	idx2 := builder.Index[float32, uint32]().
+	idx2 := builder.Index().
 		AngularDistance(3).
 		SingleWorkerPolicy().
 		MmapIndexAllocator().
@@ -355,7 +355,7 @@ func BenchmarkSmallIndexSearch(b *testing.B) {
 }
 
 func BenchmarkSmallIndexSearchNoLoad(b *testing.B) {
-	idx := builder.Index[float32, uint32]().
+	idx := builder.Index().
 		AngularDistance(3).
 		SingleWorkerPolicy().
 		Build()
@@ -364,9 +364,9 @@ func BenchmarkSmallIndexSearchNoLoad(b *testing.B) {
 	for i := 0; i < 5; i++ {
 		v := make([]float32, 3)
 		v[i%3] = 1.0
-		idx.AddItem(uint32(i), v)
+		require.NoError(b, idx.AddItem(int32(i), v))
 	}
-	idx.Build(3, 1)
+	require.NoError(b, idx.Build(3, 1))
 
 	ctx := idx.CreateContext()
 	query := []float32{1.0, 0.0, 0.0}

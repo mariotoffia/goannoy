@@ -14,6 +14,7 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 .gocache/
+.gotmp/
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
@@ -21,3 +22,4 @@
 *.ann
 results.txt
 coverage.out
+.work/

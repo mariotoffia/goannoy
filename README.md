@@ -21,7 +21,7 @@ GoAnnoy is an efficient Approximate Nearest Neighbors library for Go, optimized 
 
 ```go
 // Create a annoy index and configure it
-idx := 	builder.Index[float32, uint32]().
+idx := 	builder.Index().
 		AngularDistance(1536 /*vectorLength*/).
 		UseMultiWorkerPolicy().
 		MmapIndexAllocator().

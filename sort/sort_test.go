@@ -10,7 +10,7 @@ import (
 func BenchmarkSortPairsVsSortPairs2(t *testing.B) {
 	i := 10
 	for i <= 100000000 {
-		testSet := createData(uint32(i))
+		testSet := createData(i)
 
 		t.ResetTimer()
 
@@ -39,7 +39,7 @@ func BenchmarkSortPairsVsSortPairs2(t *testing.B) {
 func BenchmarkSortVsSort2VsSort3(t *testing.B) {
 	i := 10
 	for i <= 100000000 {
-		testSet := createIntData(uint32(i), 20)
+		testSet := createIntData(i, 20)
 
 		t.ResetTimer()
 
@@ -71,18 +71,18 @@ func BenchmarkSortVsSort2VsSort3(t *testing.B) {
 	}
 }
 
-func createIntData(N uint32, numSame int) []uint32 {
+func createIntData(n int, numSame int) []int32 {
 	rnd := random.NewGoRandom()
-	s := make([]uint32, N)
+	s := make([]int32, n)
 	cntSame := 0
-	last := rnd.NextIndex(N)
+	last := rnd.NextIndex(int32(n))
 
 	for i := 0; i < len(s); i++ {
 		if cntSame < numSame {
 			s[i] = last
 			cntSame++
 		} else {
-			s[i] = rnd.NextIndex(N)
+			s[i] = rnd.NextIndex(int32(n))
 			last = s[i]
 			cntSame = 0
 		}

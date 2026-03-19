@@ -18,19 +18,19 @@ import (
 // https://github.com/erikbern/ann-benchmarks
 
 func TestPrecision(t *testing.T) {
-	numItems := uint32(1000) //1000000
-	vectorLength := uint32(40)
+	numItems := 1000 //1000000
+	vectorLength := 40
 	randomVectorContents := true
-	multiplier := uint32(2)
+	multiplier := 2
 	verbose := false
 	justGenerate := false
 	keepAnnFile := false
 
 	var buffer bytes.Buffer
 
-	rnd := random.NewKiss32Random(uint32(0) /*default seed*/)
+	rnd := random.NewKiss32Random(0 /*default seed*/)
 
-	idx := index.New[float32, uint32](
+	idx := index.New[float32](
 		rnd,
 		angular.Distance[float32](vectorLength),
 		policy.MultiWorker(),
@@ -47,7 +47,7 @@ func TestPrecision(t *testing.T) {
 
 	createVector := func() []float32 {
 		vec := make([]float32, vectorLength)
-		for z := uint32(0); z < vectorLength; z++ {
+		for z := 0; z < vectorLength; z++ {
 			if randomVectorContents {
 				vec[z] = float32(vec_rnd.NormFloat64())
 			} else {
@@ -66,10 +66,10 @@ func TestPrecision(t *testing.T) {
 	vectors := make([][]float32, numItems)
 
 	dur := utils.Measure(func() {
-		for i := uint32(0); i < numItems; i++ {
+		for i := 0; i < numItems; i++ {
 			v := createVector()
 			vectors[i] = v
-			idx.AddItem(i, v)
+			require.NoError(t, idx.AddItem(int32(i), v))
 		}
 	})
 
@@ -80,7 +80,7 @@ func TestPrecision(t *testing.T) {
 		numItems, vectorLength, multiplier, randomVectorContents)
 
 	dur = utils.Measure(func() {
-		idx.Build(int(multiplier*vectorLength), -1)
+		require.NoError(t, idx.Build(multiplier*vectorLength, -1))
 	})
 
 	fmt.Fprintf(&buffer, "Build time: %d ms\n", dur.Milliseconds())
@@ -116,12 +116,12 @@ func TestPrecision(t *testing.T) {
 		return
 	}
 
-	for i := uint32(0); i < numItems; i++ {
+	for i := 0; i < numItems; i++ {
 		v := vectors[i]
-		iv := idx.GetItem(i)
+		iv := idx.GetItem(int32(i))
 
 		// Compare vectors
-		for j := uint32(0); j < vectorLength; j++ {
+		for j := 0; j < vectorLength; j++ {
 			if v[j] != iv[j] {
 				t.Fatalf("Vector mismatch at index %d, %f != %f", j, v[j], iv[j])
 			}
@@ -140,7 +140,7 @@ func TestPrecision(t *testing.T) {
 	prec_n := 1000
 	prec_sum := make(map[int]float64)
 	time_sum := make(map[int]float64)
-	var closest []uint32
+	var closest []int32
 
 	// init precision and timers map
 	for _, limit := range limits {
@@ -153,7 +153,7 @@ func TestPrecision(t *testing.T) {
 
 	for i := 0; i < prec_n; i++ {
 		// select a random node
-		j := rnd.NextIndex(uint32(numItems))
+		j := rnd.NextIndex(int32(numItems))
 
 		fmt.Fprintf(&buffer, "finding nbs for %d\n", j)
 
@@ -162,7 +162,7 @@ func TestPrecision(t *testing.T) {
 
 		for _, limit := range limits {
 
-			dur, topList := utils.MeasureWithReturn(func() []uint32 {
+			dur, topList := utils.MeasureWithReturn(func() []int32 {
 				c, _ := idx.GetNnsByItem(j, limit, -1, batchContext)
 				return c
 			})

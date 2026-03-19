@@ -1,6 +1,7 @@
 package index
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"unsafe"
@@ -10,7 +11,7 @@ import (
 	"github.com/mariotoffia/goannoy/utils"
 )
 
-const reallocation_factor = float64(1.5)
+const reallocation_factor = float64(1.3)
 
 // AnnoyIndexImpl is the actual index for all vectors.
 //
@@ -21,83 +22,61 @@ const reallocation_factor = float64(1.5)
 // then recursively split each of those subtrees etc.
 // We create a tree like this q times. The default q is determined automatically
 // in such a way that we at most use 2x as much memory as the vectors take.
-type AnnoyIndexImpl[
-	TV interfaces.VectorType,
-	TIX interfaces.IndexTypes] struct {
-	vectorLength TIX
+type AnnoyIndexImpl[TV interfaces.VectorType] struct {
+	vectorLength int
 	// nodeSize the the complete size of the node in bytes.
-	nodeSize TIX
+	nodeSize int
 	// _n_items is how many nodes exists in the index.
-	_n_items TIX
+	_n_items interfaces.ItemID
 	_nodes   unsafe.Pointer
-	_n_nodes TIX
+	_n_nodes interfaces.ItemID
 	// _nodes_size is the number of nodes that has been allocated.
-	// Total size is _node_size * nodeSize
-	_nodes_size TIX
-	_roots      []TIX
+	// Total size is _node_size * nodeSize.
+	_nodes_size int
+	_roots      []interfaces.ItemID
 	// batchMaxNNS is the maximum of indexes that a query can possibly create.
 	// This is updated each time a index is loaded.
 	batchMaxNNS          int
 	logVerbose           bool
-	maxDescendants       TIX
-	random               interfaces.Random[TIX]
+	maxDescendants       interfaces.ItemID
+	random               interfaces.Random
 	indexLoaded          bool
 	indexBuilt           bool
-	distance             interfaces.Distance[TV, TIX]
+	distance             interfaces.Distance[TV]
 	buildPolicy          interfaces.AnnoyIndexBuildPolicy
 	allocator            interfaces.BuildIndexAllocator
 	indexMemoryAllocator interfaces.IndexAllocator
 	indexMemory          interfaces.AllocatedIndex
-	sorter               interfaces.Sorter[TV, TIX]
+	sorter               interfaces.Sorter[TV]
 }
 
-// New create a new index instance based on the _TV_ for the vector
-// and _TIX_ for the index type. When done use the `io.Closer.Close()` to clean up
-// any resources.
-//
-// The _vectorLength_ is the number of elements in the vector that this index handles.
-// The _random_ is the random generator to use for the index. The _distance_ is the
-// distance functions to use for the index (_see sub-packages under distance/ for different
-// types_). The _buildPolicy_ is the policy to use when building the index. Those are located
-// in the `policy` package. The _allocator_ is the allocator to use while building the index.
-// Allocators reside in `package memory`.
-//
-// NOTE: It is possible to provide with a positive integer for _hintNumIndexes_ to pre-allocate
-// to speed up the index creation.
-//
-// The _indexMemoryAllocator_ is the allocator to use for the index memory when loading it from
-// file. See `package memory` for more information. It is possible to output to stdout by setting
-// _logVerbose_ to `true`. This will output the progress of the index creation.
-//
-// Use `AddIndex` and when done, `Build` to build the index. `Save` the index, and thus is then
-// ready to be used for lookups.
-func New[
-	TV interfaces.VectorType,
-	TIX interfaces.IndexTypes](
-	random interfaces.Random[TIX],
-	distance interfaces.Distance[TV, TIX],
+// New create a new index instance based on the _TV_ vector type. When done use
+// the `io.Closer.Close()` to clean up any resources.
+func New[TV interfaces.VectorType](
+	random interfaces.Random,
+	distance interfaces.Distance[TV],
 	buildPolicy interfaces.AnnoyIndexBuildPolicy,
 	allocator interfaces.BuildIndexAllocator,
 	indexMemoryAllocator interfaces.IndexAllocator,
-	sorter interfaces.Sorter[TV, TIX],
+	sorter interfaces.Sorter[TV],
 	logVerbose bool,
-	hintNumIndexes TIX,
-) interfaces.AnnoyIndex[TV, TIX] {
-	//
+	hintNumIndexes int,
+) interfaces.AnnoyIndex[TV] {
 	if sorter == nil {
-		sorter = &interfaces.SorterFunctions[TV, TIX]{
-			SortSliceFunc:        sort.SortSlice[TIX],
-			SortPairsFunc:        sort.SortPairs[TV, TIX],
-			PartialSortSliceFunc: sort.PartialSortSlice[TV, TIX],
+		sorter = &interfaces.SorterFunctions[TV]{
+			SortSliceFunc:        sort.SortSlice,
+			SortPairsFunc:        sort.SortPairs[TV],
+			PartialSortSliceFunc: sort.PartialSortSlice[TV],
 		}
 	}
-	index := &AnnoyIndexImpl[TV, TIX]{
-		vectorLength:         distance.VectorLength(),   // _f
-		random:               random,                    // _seed
-		nodeSize:             distance.NodeSize(),       // _s
-		maxDescendants:       distance.MaxNumChildren(), // _K
-		indexBuilt:           false,                     // _built
-		logVerbose:           logVerbose,                // _verbose
+
+	index := &AnnoyIndexImpl[TV]{
+		vectorLength:         distance.VectorLength(),
+		random:               random,
+		nodeSize:             distance.NodeSize(),
+		maxDescendants:       distance.MaxNumChildren(),
+		indexBuilt:           false,
+		logVerbose:           logVerbose,
 		distance:             distance,
 		allocator:            allocator,
 		buildPolicy:          buildPolicy,
@@ -105,7 +84,7 @@ func New[
 		sorter:               sorter,
 	}
 
-	// Pre-allocate memory for the index if hintNumIndexes is set > 0
+	// Pre-allocate memory for the index if hintNumIndexes is set > 0.
 	if hintNumIndexes > 0 {
 		allocator.Reallocate(int(float64(distance.NodeSize()*hintNumIndexes) * reallocation_factor))
 	}
@@ -113,8 +92,8 @@ func New[
 	return index
 }
 
-// Implements `io.Closer` interface
-func (idx *AnnoyIndexImpl[TV, TIX]) Close() error {
+// Implements `io.Closer` interface.
+func (idx *AnnoyIndexImpl[TV]) Close() error {
 	var err error
 
 	if idx.indexMemory != nil {
@@ -131,37 +110,52 @@ func (idx *AnnoyIndexImpl[TV, TIX]) Close() error {
 	idx._n_items = 0
 	idx._n_nodes = 0
 	idx._nodes_size = 0
-	idx.random = idx.random.CloneAndReset()
+	if idx.random != nil {
+		idx.random = idx.random.CloneAndReset()
+	}
 	idx._roots = nil
 
 	return err
 }
 
 // VectorLength returns the vector length of the index.
-func (idx *AnnoyIndexImpl[TV, TIX]) VectorLength() TIX {
+func (idx *AnnoyIndexImpl[TV]) VectorLength() int {
 	return idx.vectorLength
 }
 
-func (idx *AnnoyIndexImpl[TV, TIX]) GetItem(itemIndex TIX) []TV {
-	return idx.getNode(itemIndex).GetVector(idx.vectorLength)
+func (idx *AnnoyIndexImpl[TV]) GetItem(itemIndex interfaces.ItemID) []TV {
+	mustNonNegativeItemID("GetItem", itemIndex)
+
+	v := idx.getNode(itemIndex).GetVector(idx.vectorLength)
+	out := make([]TV, len(v))
+	copy(out, v)
+	return out
 }
 
-func (idx *AnnoyIndexImpl[TV, TIX]) AddItem(itemIndex TIX, v []TV) {
+func (idx *AnnoyIndexImpl[TV]) AddItem(itemIndex interfaces.ItemID, v []TV) error {
 	if idx.indexLoaded {
-		panic("Can't add items to a loaded index")
+		return errors.New("can't add items to a loaded index")
 	}
 
-	if idx.vectorLength != TIX(len(v)) {
-		panic(fmt.Sprintf("Vector length mismatch: %d != %d", idx.vectorLength, len(v)))
+	if idx.indexBuilt {
+		return errors.New("can't add items to a built index")
 	}
 
-	// Ensure that we have enough memory for the new node
-	idx.allocateSize(itemIndex+1, nil)
+	if itemIndex < 0 {
+		return fmt.Errorf("negative item id: %d", itemIndex)
+	}
 
-	// Map the node onto the memory
+	if idx.vectorLength != len(v) {
+		return fmt.Errorf("vector length mismatch: %d != %d", idx.vectorLength, len(v))
+	}
+
+	// Ensure that we have enough memory for the new node.
+	idx.allocateSize(int(itemIndex)+1, nil)
+
+	// Map the node onto the memory.
 	node := idx.getNode(itemIndex)
 
-	// Initialize the node with the vector
+	// Initialize the node with the vector.
 	node.SetNumberOfDescendants(1)
 	node.SetVector(v)
 	idx.distance.InitNode(node)
@@ -176,33 +170,35 @@ func (idx *AnnoyIndexImpl[TV, TIX]) AddItem(itemIndex TIX, v []TV) {
 			"added itemIndex:%d node - %s\n", itemIndex, utils.DumpNode(idx.distance, node),
 		)
 	}
+
+	return nil
 }
 
-func (idx *AnnoyIndexImpl[TV, TIX]) Build(numberOfTrees, numWorkers int) {
+func (idx *AnnoyIndexImpl[TV]) Build(numberOfTrees, numWorkers int) error {
 	if idx.indexLoaded {
-		panic("Can't build a loaded index")
+		return errors.New("can't build a loaded index")
 	}
 
 	if idx.indexBuilt {
-		panic("Index already built")
+		return errors.New("can't build a built index")
 	}
 
-	// Give the preprocessor a chance to process the nodes before building the index
+	// Give the preprocessor a chance to process the nodes before building the index.
 	idx.distance.PreProcess(idx._nodes, idx._n_items)
 
 	idx._n_nodes = idx._n_items
 
 	idx.buildPolicy.Build(idx, numberOfTrees, numWorkers)
 
-	// Also, copy the roots into the last segment of the array
-	// This way we can load them faster without reading the whole file
-	idx.allocateSize(idx._n_nodes+TIX(len(idx._roots)), nil)
+	// Also, copy the roots into the last segment of the array.
+	// This way we can load them faster without reading the whole file.
+	idx.allocateSize(int(idx._n_nodes)+len(idx._roots), nil)
 
-	for i := TIX(0); i < TIX(len(idx._roots)); i++ {
-		dst := idx.getNode(idx._n_nodes + i)
+	for i := range idx._roots {
+		dst := idx.getNode(idx._n_nodes + interfaces.ItemID(i))
 		src := idx.getNode(idx._roots[i])
 
-		utils.CopyNode(dst, src, idx.vectorLength)
+		utils.CopyNode(dst, src, idx.nodeSize)
 
 		if idx.logVerbose {
 			fmt.Printf(
@@ -211,23 +207,32 @@ func (idx *AnnoyIndexImpl[TV, TIX]) Build(numberOfTrees, numWorkers int) {
 		}
 	}
 
-	idx._n_nodes += TIX(len(idx._roots))
+	idx._n_nodes += interfaces.ItemID(len(idx._roots))
+
+	if pp, ok := idx.distance.(interface {
+		PostProcess(nodes unsafe.Pointer, nodeCount interfaces.ItemID)
+	}); ok {
+		pp.PostProcess(idx._nodes, idx._n_items)
+	}
+
 	idx.indexBuilt = true
 
 	idx.computeBatchMaxNNS()
+
+	return nil
 }
 
 // ThreadBuild is called from the build policy to build the index.
-func (idx *AnnoyIndexImpl[TV, TIX]) ThreadBuild(
+func (idx *AnnoyIndexImpl[TV]) ThreadBuild(
 	treesPerWorker, workerIdx int,
 	threadedBuildPolicy interfaces.AnnoyIndexBuildPolicy,
 ) {
 	rnd := idx.random.CloneAndReset()
 
-	// Each worker needs its own seed, otherwise each worker would be building the same tree(s)
-	rnd.SetSeed(rnd.GetSeed() + TIX(workerIdx))
+	// Each worker needs its own seed, otherwise each worker would be building the same tree(s).
+	rnd.SetSeed(rnd.GetSeed() + uint64(workerIdx))
 
-	var threadRoots []TIX
+	var threadRoots []interfaces.ItemID
 
 	for {
 		if treesPerWorker == -1 {
@@ -237,24 +242,20 @@ func (idx *AnnoyIndexImpl[TV, TIX]) ThreadBuild(
 				break
 			}
 			threadedBuildPolicy.UnlockNNodes()
-		} else {
-			if len(threadRoots) >= treesPerWorker {
-				break
-			}
+		} else if len(threadRoots) >= treesPerWorker {
+			break
 		}
 
-		var indices []TIX
+		var indices []interfaces.ItemID
 
 		threadedBuildPolicy.LockSharedNodes()
-
-		for i := TIX(0); i < idx._n_items; i++ {
-			node := idx.getNode(i)
-
+		for i := 0; i < int(idx._n_items); i++ {
+			itemID := interfaces.ItemID(i)
+			node := idx.getNode(itemID)
 			if node.GetNumberOfDescendants() >= 1 {
-				indices = append(indices, i)
+				indices = append(indices, itemID)
 			}
 		}
-
 		threadedBuildPolicy.UnlockSharedNodes()
 
 		threadRoots = append(
@@ -268,15 +269,15 @@ func (idx *AnnoyIndexImpl[TV, TIX]) ThreadBuild(
 	threadedBuildPolicy.UnlockRoots()
 }
 
-func (idx *AnnoyIndexImpl[TV, TIX]) getNode(index TIX) interfaces.Node[TV, TIX] {
+func (idx *AnnoyIndexImpl[TV]) getNode(index interfaces.ItemID) interfaces.Node[TV] {
 	return idx.distance.MapNodeToMemory(idx._nodes, index)
 }
 
-func (idx *AnnoyIndexImpl[TV, TIX]) makeTree(
-	indices []TIX, isRoot bool,
-	rnd interfaces.Random[TIX],
+func (idx *AnnoyIndexImpl[TV]) makeTree(
+	indices []interfaces.ItemID, isRoot bool,
+	rnd interfaces.Random,
 	threadedBuildPolicy interfaces.AnnoyIndexBuildPolicy,
-) TIX {
+) interfaces.ItemID {
 	// The basic rule is that if we have <= maxDescendants items, then it's a leaf node, otherwise it's a split node.
 	// There's some regrettable complications caused by the problem that root nodes have to be "special":
 	// 1. We identify root nodes by the arguable logic that _n_items == n->n_descendants,
@@ -289,12 +290,12 @@ func (idx *AnnoyIndexImpl[TV, TIX]) makeTree(
 		return indices[0]
 	}
 
-	lenIdx := TIX(len(indices))
+	lenIdx := interfaces.ItemID(len(indices))
 	if lenIdx <= idx.maxDescendants &&
 		(!isRoot || idx._n_items <= idx.maxDescendants || lenIdx == 1) {
-		// Ensure we have memory for the new node
+		// Ensure we have memory for the new node.
 		threadedBuildPolicy.LockNNodes()
-		idx.allocateSize(idx._n_nodes+1, threadedBuildPolicy)
+		idx.allocateSize(int(idx._n_nodes)+1, threadedBuildPolicy)
 
 		item := idx._n_nodes
 		idx._n_nodes++
@@ -311,9 +312,8 @@ func (idx *AnnoyIndexImpl[TV, TIX]) makeTree(
 		}
 
 		if len(indices) > 0 {
-			children := make([]TIX, len(indices))
+			children := make([]interfaces.ItemID, len(indices))
 			copy(children, indices)
-
 			m.SetChildren(children)
 		}
 
@@ -328,26 +328,25 @@ func (idx *AnnoyIndexImpl[TV, TIX]) makeTree(
 
 	threadedBuildPolicy.LockSharedNodes()
 
-	var children []interfaces.Node[TV, TIX]
-
+	var children []interfaces.Node[TV]
 	for _, j := range indices {
 		// TODO: original code did a check: Node* n = _get(j); if (n) {...}
 		n := idx.getNode(j)
 		children = append(children, n)
 	}
 
-	children_indices := [2][]TIX{}
-	data := make([]byte, idx.nodeSize) // Need it since, gc won't remove it until scope end
-
+	childrenIndices := [2][]interfaces.ItemID{}
+	data := make([]byte, idx.nodeSize) // Need it since gc won't remove it until scope end.
 	m := idx.distance.MapNodeToMemory(
-		unsafe.Pointer(unsafe.SliceData(data)), 0,
+		unsafe.Pointer(unsafe.SliceData(data)),
+		0,
 	)
 
 	for attempt := 0; attempt < 3; attempt++ {
-		children_indices[0] = nil
-		children_indices[1] = nil
+		childrenIndices[0] = nil
+		childrenIndices[1] = nil
 
-		idx.distance.CreateSplit(children, idx.nodeSize, idx.random, m)
+		idx.distance.CreateSplit(children, idx.nodeSize, rnd, m)
 
 		for _, j := range indices {
 			// TODO: original code did a check: Node* n = _get(j); if (n) {...}
@@ -356,80 +355,76 @@ func (idx *AnnoyIndexImpl[TV, TIX]) makeTree(
 			side := idx.distance.Side(
 				m,
 				n.GetVector(idx.vectorLength),
-				idx.random,
+				rnd,
 			)
 
-			children_indices[side] = append(children_indices[side], j)
+			childrenIndices[side] = append(childrenIndices[side], j)
 		}
 
-		if idx.splitImbalance(
-			children_indices[0],
-			children_indices[1]) < 0.95 {
+		if idx.splitImbalance(childrenIndices[0], childrenIndices[1]) < 0.95 {
 			break
 		}
 	}
 
 	threadedBuildPolicy.UnlockSharedNodes()
 
-	// If we didn't find a hyperplane, just randomize sides as a last option
+	// If we didn't find a hyperplane, just randomize sides as a last option.
 	for {
 		if idx.splitImbalance(
-			children_indices[interfaces.SideLeft],
-			children_indices[interfaces.SideRight]) <= 0.99 {
+			childrenIndices[interfaces.SideLeft],
+			childrenIndices[interfaces.SideRight],
+		) <= 0.99 {
 			break
 		}
 
-		children_indices[0] = nil
-		children_indices[1] = nil
+		childrenIndices[0] = nil
+		childrenIndices[1] = nil
 
-		// Set the vector to 0.0
+		// Set the vector to 0.0.
 		m.SetVector(make([]TV, idx.vectorLength))
 
 		for _, j := range indices {
 			// Just randomize...
-			side := idx.random.NextSide()
-			children_indices[side] = append(children_indices[side], j)
+			side := rnd.NextSide()
+			childrenIndices[side] = append(childrenIndices[side], j)
 		}
 	}
 
 	if isRoot {
 		m.SetNumberOfDescendants(idx._n_items)
 	} else {
-		m.SetNumberOfDescendants(TIX(len(indices)))
+		m.SetNumberOfDescendants(interfaces.ItemID(len(indices)))
 	}
 
-	var flip int
-	if len(children_indices[interfaces.SideLeft]) > len(children_indices[interfaces.SideRight]) {
+	flip := 0
+	if len(childrenIndices[interfaces.SideLeft]) > len(childrenIndices[interfaces.SideRight]) {
 		flip = 1
 	}
 
-	child_first := make([]TIX, 2)
-
+	childFirst := make([]interfaces.ItemID, 2)
 	for side := 0; side < 2; side++ {
 		// run makeTree for the smallest child first (for cache locality)
-		flip_side := side ^ flip
-
-		child_first[flip_side] = idx.makeTree(
-			children_indices[flip_side],
+		flipSide := side ^ flip
+		childFirst[flipSide] = idx.makeTree(
+			childrenIndices[flipSide],
 			false,
 			rnd,
 			threadedBuildPolicy,
 		)
 	}
 
-	m.SetChildren(child_first)
+	m.SetChildren(childFirst)
 
-	idx.buildPolicy.LockNNodes()
-	idx.allocateSize(idx._n_nodes+1, threadedBuildPolicy)
+	threadedBuildPolicy.LockNNodes()
+	idx.allocateSize(int(idx._n_nodes)+1, threadedBuildPolicy)
 	item := idx._n_nodes
 	idx._n_nodes++
-	idx.buildPolicy.UnlockNNodes()
+	threadedBuildPolicy.UnlockNNodes()
 
-	idx.buildPolicy.LockSharedNodes()
+	threadedBuildPolicy.LockSharedNodes()
 	dst := idx.getNode(item)
-
-	utils.CopyNode(dst, m, idx.vectorLength)
-	idx.buildPolicy.UnlockSharedNodes()
+	utils.CopyNode(dst, m, idx.nodeSize)
+	threadedBuildPolicy.UnlockSharedNodes()
 
 	if idx.logVerbose {
 		fmt.Printf("added 2:node[item=%d] - %s\n", item, utils.DumpNode(idx.distance, dst))
@@ -438,26 +433,28 @@ func (idx *AnnoyIndexImpl[TV, TIX]) makeTree(
 	return item
 }
 
-func (idx *AnnoyIndexImpl[TV, TIX]) splitImbalance(
-	left_indices, right_indices []TIX) float64 {
-	ls := float64(len(left_indices))
-	rs := float64(len(right_indices))
+func (idx *AnnoyIndexImpl[TV]) splitImbalance(
+	leftIndices, rightIndices []interfaces.ItemID,
+) float64 {
+	ls := float64(len(leftIndices))
+	rs := float64(len(rightIndices))
 
-	f := ls / (ls + rs + 1e-9) // Avoid 0/0
+	f := ls / (ls + rs + 1e-9) // Avoid 0/0.
 	return math.Max(f, 1-f)
 }
 
 // computeBatchMaxNNS calculates the maximum number of nearest neighbor
 // candidates that can be collected during a single search traversal.
-func (idx *AnnoyIndexImpl[TV, TIX]) computeBatchMaxNNS() {
+func (idx *AnnoyIndexImpl[TV]) computeBatchMaxNNS() {
 	idx.batchMaxNNS = -1
 
-	for i := TIX(0); i < idx._n_nodes; i++ {
-		nd := idx.getNode(i)
+	for i := 0; i < int(idx._n_nodes); i++ {
+		nodeID := interfaces.ItemID(i)
+		nd := idx.getNode(nodeID)
 
 		nDescendants := nd.GetNumberOfDescendants()
 
-		if nDescendants == 1 && i < idx._n_items {
+		if nDescendants == 1 && nodeID < idx._n_items {
 			idx.batchMaxNNS++
 		} else if nDescendants <= idx.maxDescendants {
 			idx.batchMaxNNS += len(nd.GetChildren())
@@ -469,22 +466,27 @@ func (idx *AnnoyIndexImpl[TV, TIX]) computeBatchMaxNNS() {
 	}
 }
 
-func (idx *AnnoyIndexImpl[TV, TIX]) allocateSize(
-	numNodes TIX,
+func (idx *AnnoyIndexImpl[TV]) allocateSize(
+	numNodes int,
 	threadedBuildPolicy interfaces.AnnoyIndexBuildPolicy,
 ) {
 	if numNodes > idx._nodes_size {
-
 		if threadedBuildPolicy != nil {
 			threadedBuildPolicy.LockNodes()
 		}
 
-		new_node_size := utils.Max(numNodes, TIX(float64(idx._nodes_size+1)*reallocation_factor))
-		idx._nodes = idx.allocator.Reallocate(int(new_node_size * idx.nodeSize))
-		idx._nodes_size = new_node_size
+		newNodeSize := utils.Max(numNodes, int(float64(idx._nodes_size+1)*reallocation_factor))
+		idx._nodes = idx.allocator.Reallocate(newNodeSize * idx.nodeSize)
+		idx._nodes_size = newNodeSize
 
 		if threadedBuildPolicy != nil {
 			threadedBuildPolicy.UnlockNodes()
 		}
+	}
+}
+
+func mustNonNegativeItemID(method string, itemID interfaces.ItemID) {
+	if itemID < 0 {
+		panic(fmt.Sprintf("%s: negative item id %d", method, itemID))
 	}
 }

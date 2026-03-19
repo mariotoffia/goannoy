@@ -5,16 +5,17 @@ import (
 
 	"github.com/mariotoffia/goannoy/interfaces"
 	"github.com/mariotoffia/goannoy/sort"
+	"golang.org/x/exp/constraints"
 )
 
-func Max[T interfaces.IndexTypes](a, b T) T {
+func Max[T constraints.Ordered](a, b T) T {
 	if a > b {
 		return a
 	}
 	return b
 }
 
-func Intersection[TIX interfaces.IndexTypes](a, b []TIX) []TIX {
+func Intersection(a, b []interfaces.ItemID) []interfaces.ItemID {
 	sort.SortSlice(a)
 	sort.SortSlice(b)
 
@@ -25,7 +26,7 @@ func Intersection[TIX interfaces.IndexTypes](a, b []TIX) []TIX {
 	}
 
 	// Pre-allocate the maximum possible size
-	intersection := make([]TIX, maxSize)
+	intersection := make([]interfaces.ItemID, maxSize)
 	i, j, k := 0, 0, 0
 
 	for i < len(a) && j < len(b) {

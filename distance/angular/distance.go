@@ -9,22 +9,20 @@ import (
 	"github.com/mariotoffia/goannoy/vector"
 )
 
-type angularDistanceImpl[TV interfaces.VectorType, TIX interfaces.IndexTypes] struct {
-	nodeSize       TIX
-	maxNumChildren TIX
-	vectorLength   TIX
+type angularDistanceImpl[TV interfaces.VectorType] struct {
+	nodeSize       int
+	maxNumChildren interfaces.ItemID
+	vectorLength   int
 }
 
 // Distance creates a new angular distance implementation.
-func Distance[TV interfaces.VectorType, TIX interfaces.IndexTypes](
-	vectorLength TIX,
-) *angularDistanceImpl[TV, TIX] {
+func Distance[TV interfaces.VectorType](vectorLength int) *angularDistanceImpl[TV] {
 
-	n := AngularNodeImpl[TV, TIX]{}
+	n := AngularNodeImpl[TV]{}
 
-	ad := &angularDistanceImpl[TV, TIX]{
+	ad := &angularDistanceImpl[TV]{
 		vectorLength: vectorLength,
-		nodeSize: TIX(
+		nodeSize: int(
 			unsafe.Offsetof(n.v) +
 				(uintptr(vectorLength) * unsafe.Sizeof(TV(0))),
 		),
@@ -32,52 +30,52 @@ func Distance[TV interfaces.VectorType, TIX interfaces.IndexTypes](
 
 	// _K = (S) (((size_t) (_s - offsetof(Node, children))) / sizeof(S));
 	size := uintptr(ad.nodeSize) - unsafe.Offsetof(n.children)
-	ad.maxNumChildren = TIX(size / unsafe.Sizeof(n.children[0]))
+	ad.maxNumChildren = interfaces.ItemID(size / unsafe.Sizeof(n.children[0]))
 
 	return ad
 }
 
-func (a *angularDistanceImpl[TV, TIX]) VectorLength() TIX {
+func (a *angularDistanceImpl[TV]) VectorLength() int {
 	return a.vectorLength
 }
 
-func (a *angularDistanceImpl[TV, TIX]) MaxNumChildren() TIX {
+func (a *angularDistanceImpl[TV]) MaxNumChildren() interfaces.ItemID {
 	return a.maxNumChildren
 }
 
-func (a *angularDistanceImpl[TV, TIX]) NodeSize() TIX {
+func (a *angularDistanceImpl[TV]) NodeSize() int {
 	return a.nodeSize
 }
 
-func (a *angularDistanceImpl[TV, TIX]) MapNodeToMemory(
+func (a *angularDistanceImpl[TV]) MapNodeToMemory(
 	mem unsafe.Pointer,
-	itemIndex TIX,
-) interfaces.Node[TV, TIX] {
-	pos := unsafe.Add(mem, itemIndex*a.nodeSize)
+	itemIndex interfaces.ItemID,
+) interfaces.Node[TV] {
+	pos := unsafe.Add(mem, uintptr(itemIndex)*uintptr(a.nodeSize))
 
-	return (*AngularNodeImpl[TV, TIX])(pos)
+	return (*AngularNodeImpl[TV])(pos)
 }
 
-func (a *angularDistanceImpl[TV, TIX]) PreProcess(nodes unsafe.Pointer, node_count TIX) {
+func (a *angularDistanceImpl[TV]) PreProcess(nodes unsafe.Pointer, nodeCount interfaces.ItemID) {
 	// DO NOTHING
 }
 
-func (a *angularDistanceImpl[TV, TIX]) Normalize(node interfaces.Node[TV, TIX]) {
+func (a *angularDistanceImpl[TV]) Normalize(node interfaces.Node[TV]) {
 	raw := node.GetRawVector()
 	norm := TV(vector.GetNormUnsafe(raw, a.vectorLength))
 
 	if norm > 0 {
 		ptr := unsafe.Pointer(raw)
-		size := TIX(unsafe.Sizeof(TV(0)))
+		size := unsafe.Sizeof(TV(0))
 
-		for i := TIX(0); i < a.vectorLength; i++ {
-			f := (*TV)(unsafe.Pointer(unsafe.Add(ptr, i*size)))
+		for i := 0; i < a.vectorLength; i++ {
+			f := (*TV)(unsafe.Pointer(unsafe.Add(ptr, uintptr(i)*size)))
 			*f /= norm
 		}
 	}
 }
 
-func (a *angularDistanceImpl[TV, TIX]) Distance(x interfaces.Node[TV, TIX], y interfaces.Node[TV, TIX]) TV {
+func (a *angularDistanceImpl[TV]) Distance(x interfaces.Node[TV], y interfaces.Node[TV]) TV {
 	pp := x.GetNorm()
 	qq := y.GetNorm()
 	xv := x.GetRawVector()
@@ -104,7 +102,7 @@ func (a *angularDistanceImpl[TV, TIX]) Distance(x interfaces.Node[TV, TIX], y in
 	return 2.0
 }
 
-func (a *angularDistanceImpl[TV, TIX]) Margin(n interfaces.Node[TV, TIX], y []TV) TV {
+func (a *angularDistanceImpl[TV]) Margin(n interfaces.Node[TV], y []TV) TV {
 	if len(y) == 0 {
 		panic("y is empty")
 	}
@@ -116,10 +114,10 @@ func (a *angularDistanceImpl[TV, TIX]) Margin(n interfaces.Node[TV, TIX], y []TV
 	)
 }
 
-func (a *angularDistanceImpl[TV, TIX]) Side(
-	n interfaces.Node[TV, TIX],
+func (a *angularDistanceImpl[TV]) Side(
+	n interfaces.Node[TV],
 	y []TV,
-	random interfaces.Random[TIX],
+	random interfaces.Random,
 ) interfaces.Side {
 
 	dot := a.Margin(n, y)
@@ -135,53 +133,53 @@ func (a *angularDistanceImpl[TV, TIX]) Side(
 	return random.NextSide()
 }
 
-func (a *angularDistanceImpl[TV, TIX]) CreateSplit(
-	nodes []interfaces.Node[TV, TIX],
-	nodeSize TIX,
-	random interfaces.Random[TIX],
-	n interfaces.Node[TV, TIX],
+func (a *angularDistanceImpl[TV]) CreateSplit(
+	nodes []interfaces.Node[TV],
+	nodeSize int,
+	random interfaces.Random,
+	n interfaces.Node[TV],
 ) {
 	// Allocate memory for two nodes, and use them as temporary nodes
 	p_mem := make([]byte, nodeSize)
 	q_mem := make([]byte, nodeSize)
 
-	p := (*AngularNodeImpl[TV, TIX])(unsafe.Pointer(unsafe.SliceData(p_mem)))
-	q := (*AngularNodeImpl[TV, TIX])(unsafe.Pointer(unsafe.SliceData(q_mem)))
+	p := (*AngularNodeImpl[TV])(unsafe.Pointer(unsafe.SliceData(p_mem)))
+	q := (*AngularNodeImpl[TV])(unsafe.Pointer(unsafe.SliceData(q_mem)))
 
-	distance.TwoMeans[TV, TIX](nodes, a.vectorLength, random, true, p, q, a)
+	distance.TwoMeans[TV](nodes, a.vectorLength, random, true, p, q, a)
 
 	nv := n.GetVector(a.vectorLength)
 	qv := q.GetVector(a.vectorLength)
 	pv := p.GetVector(a.vectorLength)
 
-	for z := TIX(0); z < a.vectorLength; z++ {
+	for z := 0; z < a.vectorLength; z++ {
 		nv[z] = pv[z] - qv[z]
 	}
 
 	a.Normalize(n)
 }
 
-func (a *angularDistanceImpl[TV, _]) NormalizedDistance(distance TV) TV {
+func (a *angularDistanceImpl[TV]) NormalizedDistance(distance TV) TV {
 	return TV(math.Sqrt(float64(distance)))
 }
 
-func (a *angularDistanceImpl[TV, TIX]) PQDistance(distance, margin TV, side interfaces.Side) TV {
+func (a *angularDistanceImpl[TV]) PQDistance(distance, margin TV, side interfaces.Side) TV {
 	if side == interfaces.SideLeft {
 		margin = -margin
 	}
 	return TV(math.Min(float64(distance), float64(margin)))
 }
 
-func (a *angularDistanceImpl[TV, TIX]) PQInitialValue() TV {
+func (a *angularDistanceImpl[TV]) PQInitialValue() TV {
 	return TV(math.Inf(1))
 }
 
 // InitNode will initialize the node by setting the norm to the value based on the distance type.
-func (a *angularDistanceImpl[TV, TIX]) InitNode(node interfaces.Node[TV, TIX]) {
+func (a *angularDistanceImpl[TV]) InitNode(node interfaces.Node[TV]) {
 	norm := vector.DotUnsafe(node.GetRawVector(), node.GetRawVector(), a.vectorLength)
 	node.SetNorm(norm)
 }
 
-func (a *angularDistanceImpl[TV, TIX]) Name() string {
+func (a *angularDistanceImpl[TV]) Name() string {
 	return "angular"
 }

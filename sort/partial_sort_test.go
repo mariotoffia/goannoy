@@ -10,7 +10,7 @@ import (
 )
 
 func TestCorrectness(t *testing.T) {
-	var s = interfaces.Pairs[float32, uint32]{
+	var s = interfaces.Pairs[float32]{
 		{10, 10},
 		{6, 6},
 		{7, 7},
@@ -32,7 +32,7 @@ func TestCorrectness(t *testing.T) {
 }
 
 func TestCorrectness2(t *testing.T) {
-	var s = interfaces.Pairs[float32, uint32]{
+	var s = interfaces.Pairs[float32]{
 		{10, 10},
 		{6, 6},
 		{7, 7},
@@ -54,7 +54,7 @@ func TestCorrectness2(t *testing.T) {
 }
 
 func TestCorrectnessBug(t *testing.T) {
-	var s = []*interfaces.Pair[float32, uint32]{
+	var s = []*interfaces.Pair[float32]{
 		{1.1055728, 0},
 		{2, 1},
 		{
@@ -68,7 +68,7 @@ func TestCorrectnessBug(t *testing.T) {
 }
 
 func TestCorrectnessBug2(t *testing.T) {
-	var s = []*interfaces.Pair[float32, uint32]{
+	var s = []*interfaces.Pair[float32]{
 		{1.1055728, 0},
 		{2, 1},
 		{
@@ -82,7 +82,7 @@ func TestCorrectnessBug2(t *testing.T) {
 }
 
 func BenchmarkPartialSort(t *testing.B) {
-	testSet := createData(uint32(1000000))
+	testSet := createData(1000000)
 	N := len(testSet)
 
 	t.Run("Partial", func(t *testing.B) {
@@ -107,7 +107,7 @@ func BenchmarkPartialSort(t *testing.B) {
 func BenchmarkPartialSortVsPartialSort2(t *testing.B) {
 	i := 10
 	for i <= 100000000 {
-		testSet := createData(uint32(i))
+		testSet := createData(i)
 		N := len(testSet)
 
 		t.ResetTimer()
@@ -134,13 +134,13 @@ func BenchmarkPartialSortVsPartialSort2(t *testing.B) {
 	}
 }
 
-func createData(N uint32) []*interfaces.Pair[float32, uint32] {
+func createData(n int) []*interfaces.Pair[float32] {
 	rnd := random.NewGoRandom()
-	s := make([]*interfaces.Pair[float32, uint32], N)
+	s := make([]*interfaces.Pair[float32], n)
 	for i := 0; i < len(s); i++ {
-		s[i] = &interfaces.Pair[float32, uint32]{
-			First:  float32(rnd.NextIndex(N)),
-			Second: uint32(i),
+		s[i] = &interfaces.Pair[float32]{
+			First:  float32(rnd.NextIndex(int32(n))),
+			Second: int32(i),
 		}
 	}
 	return s

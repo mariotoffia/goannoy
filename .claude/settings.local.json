@@ -2,8 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(go build:*)",
+      "Bash(make test:*)",
+      "Bash(make bench:*)",
+      "Bash(make lint:*)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(gh api:*)"
+      "Bash(curl:*)",
+      "Bash(go test:*)",
+      "Bash(tee:*)",
+      "Bash(git stash:*)",
+      "Bash(git checkout:*)",
+      "Bash(benchstat:*)"
     ]
   }
 }

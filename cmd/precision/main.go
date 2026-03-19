@@ -53,7 +53,7 @@ func main() {
 		buffer = os.Stdout
 	}
 
-	indexBuilder := builder.Index[float32, uint32]().
+	indexBuilder := builder.Index().
 		AngularDistance(vectorLength).
 		UseMultiWorkerPolicy().
 		MmapIndexAllocator().
@@ -75,7 +75,7 @@ func main() {
 
 	createVector := func() []float32 {
 		vec := make([]float32, vectorLength)
-		for z := uint32(0); z < uint32(vectorLength); z++ {
+		for z := 0; z < vectorLength; z++ {
 			if randomVectorContents {
 				vec[z] = float32(vec_rnd.NormFloat64())
 			} else {
@@ -97,7 +97,7 @@ func main() {
 		for i := 0; i < numItems; i++ {
 			v := createVector()
 			vectors[i] = v
-			idx.AddItem(uint32(i), v)
+			idx.AddItem(int32(i), v)
 		}
 	})
 
@@ -153,10 +153,10 @@ func main() {
 
 	for i := 0; i < numItems; i++ {
 		v := vectors[i]
-		iv := idx.GetItem(uint32(i))
+		iv := idx.GetItem(int32(i))
 
 		// Compare vectors
-		for j := uint32(0); j < uint32(vectorLength); j++ {
+		for j := 0; j < vectorLength; j++ {
 			if v[j] != iv[j] {
 				panic(fmt.Sprintf("Vector mismatch at index %d, %f != %f", j, v[j], iv[j]))
 			}
@@ -173,7 +173,7 @@ func main() {
 
 	prec_sum := make(map[int]float64)
 	time_sum := make(map[int]float64)
-	var closest []uint32
+	var closest []int32
 
 	// init precision and timers map
 	for _, limit := range limits {
@@ -200,11 +200,11 @@ func main() {
 		}
 	}()
 
-	rnd := random.NewKiss32Random(uint32(0))
+	rnd := random.NewKiss32Random(0)
 
 	for i := 0; i < prec_n; i++ {
 		// select a random node
-		j := rnd.NextIndex(uint32(numItems))
+		j := rnd.NextIndex(int32(numItems))
 
 		fmt.Fprintf(buffer, "finding nbs for %d\n", j)
 
@@ -213,7 +213,7 @@ func main() {
 
 		for _, limit := range limits {
 
-			dur, topList := utils.MeasureWithReturn(func() []uint32 {
+			dur, topList := utils.MeasureWithReturn(func() []int32 {
 				c, _ := idx.GetNnsByItem(j, limit, -1, batchContext)
 				return c
 			})
