@@ -48,6 +48,7 @@ type AnnoyIndexImpl[TV interfaces.VectorType] struct {
 	indexMemoryAllocator interfaces.IndexAllocator
 	indexMemory          interfaces.AllocatedIndex
 	sorter               interfaces.Sorter[TV]
+	onDiskFile           string
 }
 
 // New create a new index instance based on the _TV_ vector type. When done use
@@ -92,32 +93,6 @@ func New[TV interfaces.VectorType](
 	return index
 }
 
-// Implements `io.Closer` interface.
-func (idx *AnnoyIndexImpl[TV]) Close() error {
-	var err error
-
-	if idx.indexMemory != nil {
-		err = idx.indexMemory.Close()
-		idx.indexMemory = nil
-	}
-
-	if idx.allocator != nil {
-		idx.allocator.Free()
-	}
-
-	idx._nodes = nil
-	idx.indexLoaded = false
-	idx._n_items = 0
-	idx._n_nodes = 0
-	idx._nodes_size = 0
-	if idx.random != nil {
-		idx.random = idx.random.CloneAndReset()
-	}
-	idx._roots = nil
-
-	return err
-}
-
 // VectorLength returns the vector length of the index.
 func (idx *AnnoyIndexImpl[TV]) VectorLength() int {
 	return idx.vectorLength
@@ -130,6 +105,14 @@ func (idx *AnnoyIndexImpl[TV]) GetItem(itemIndex interfaces.ItemID) []TV {
 	out := make([]TV, len(v))
 	copy(out, v)
 	return out
+}
+
+func (idx *AnnoyIndexImpl[TV]) GetNItems() int {
+	return int(idx._n_items)
+}
+
+func (idx *AnnoyIndexImpl[TV]) GetNTrees() int {
+	return len(idx._roots)
 }
 
 func (idx *AnnoyIndexImpl[TV]) AddItem(itemIndex interfaces.ItemID, v []TV) error {
@@ -216,6 +199,18 @@ func (idx *AnnoyIndexImpl[TV]) Build(numberOfTrees, numWorkers int) error {
 	}
 
 	idx.indexBuilt = true
+
+	// When building on disk, finalize the file and reload as read-only mmap.
+	if idx.onDiskFile != "" {
+		finalSize := int64(idx._n_nodes) * int64(idx.nodeSize)
+		if trunc, ok := idx.allocator.(interface{ Truncate(int64) error }); ok {
+			if err := trunc.Truncate(finalSize); err != nil {
+				return fmt.Errorf("on-disk build: truncate: %w", err)
+			}
+		}
+		idx.allocator.Free()
+		return idx.Load(idx.onDiskFile)
+	}
 
 	idx.computeBatchMaxNNS()
 

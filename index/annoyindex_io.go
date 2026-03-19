@@ -1,6 +1,7 @@
 package index
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"unsafe"
@@ -8,6 +9,98 @@ import (
 	"github.com/mariotoffia/goannoy/interfaces"
 	"github.com/mariotoffia/goannoy/utils"
 )
+
+func (idx *AnnoyIndexImpl[TV]) OnDiskBuild(fileName string) error {
+	if idx._n_items > 0 {
+		return errors.New("on-disk build must be called before adding items")
+	}
+	if idx.indexBuilt || idx.indexLoaded {
+		return errors.New("on-disk build requires a fresh index")
+	}
+
+	alloc, err := newOnDiskBuildAllocator(fileName)
+	if err != nil {
+		return err
+	}
+
+	// Free the old allocator and switch to on-disk.
+	if idx.allocator != nil {
+		idx.allocator.Free()
+	}
+	idx.allocator = alloc
+	idx.onDiskFile = fileName
+
+	return nil
+}
+
+func (idx *AnnoyIndexImpl[TV]) Unbuild() error {
+	if idx.indexLoaded {
+		return errors.New("can't unbuild a loaded index")
+	}
+	if !idx.indexBuilt {
+		return errors.New("can't unbuild an index that hasn't been built")
+	}
+
+	idx._roots = nil
+	idx._n_nodes = idx._n_items
+	idx.indexBuilt = false
+	idx.batchMaxNNS = -1
+
+	return nil
+}
+
+func (idx *AnnoyIndexImpl[TV]) Unload() error {
+	var err error
+
+	if idx.indexMemory != nil {
+		err = idx.indexMemory.Close()
+		idx.indexMemory = nil
+	}
+
+	idx._nodes = nil
+	idx.indexLoaded = false
+	idx.indexBuilt = false
+	idx._n_items = 0
+	idx._n_nodes = 0
+	idx._nodes_size = 0
+	idx._roots = nil
+	idx.batchMaxNNS = -1
+
+	return err
+}
+
+// Close implements the io.Closer interface.
+func (idx *AnnoyIndexImpl[TV]) Close() error {
+	var err error
+
+	if idx.indexMemory != nil {
+		err = idx.indexMemory.Close()
+		idx.indexMemory = nil
+	}
+
+	if idx.allocator != nil {
+		idx.allocator.Free()
+	}
+
+	idx._nodes = nil
+	idx.indexLoaded = false
+	idx._n_items = 0
+	idx._n_nodes = 0
+	idx._nodes_size = 0
+	if idx.random != nil {
+		idx.random = idx.random.CloneAndReset()
+	}
+	idx._roots = nil
+
+	return err
+}
+
+func (idx *AnnoyIndexImpl[TV]) Prefault() error {
+	if p, ok := idx.indexMemory.(interface{ Prefault() error }); ok {
+		return p.Prefault()
+	}
+	return nil
+}
 
 func (idx *AnnoyIndexImpl[TV]) Save(fileName string) error {
 	if !idx.indexBuilt {

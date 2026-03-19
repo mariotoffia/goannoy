@@ -64,8 +64,30 @@ type AnnoyIndex[TV VectorType] interface {
 		numReturn, numNodesToInspect int,
 		ctx AnnoyIndexContext[TV],
 	) []ItemID
+	// OnDiskBuild prepares the index to build directly into the given file.
+	// All subsequent AddItem and Build calls write to a memory-mapped file
+	// instead of heap memory. After Build completes the file is a ready-to-use
+	// index — no separate Save call is needed. Must be called before AddItem.
+	OnDiskBuild(fileName string) error
+	// Unbuild removes all trees from the index, allowing new items to be added
+	// and the index to be rebuilt. Items already added are preserved. This is
+	// not valid on a loaded index — only on one that was built in memory.
+	Unbuild() error
+	// Unload releases the index data from memory but keeps the configuration
+	// intact so that Load can be called again. This is useful for long-lived
+	// applications that need to free memory without destroying the index object.
+	Unload() error
+	// GetNItems returns the number of items that have been added to the index.
+	GetNItems() int
+	// GetNTrees returns the number of trees in the index. This is only valid
+	// after Build or Load has been called.
+	GetNTrees() int
 	Save(fileName string) error
 	Load(fileName string) error
+	// Prefault pre-loads all memory-mapped pages into RAM so that subsequent
+	// searches do not trigger page faults. This is a no-op when the index is
+	// not backed by a memory-mapped file. Call after Load for best effect.
+	Prefault() error
 }
 
 type AnnoyIndexBuilder interface {
