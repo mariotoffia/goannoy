@@ -20,3 +20,8 @@ one-worker build.
 Balanced defaults to at most four workers, Throughput uses GOMAXPROCS, and
 LowMemory uses one. Explicit Workers overrides the profile; Workers(0)
 requests GOMAXPROCS. Profiles never change file layout or metric definitions.
+
+OnDisk(path) uses a growing writable mapping while constructing trees, then
+syncs and atomically commits the complete file. It uses one construction worker
+to keep writable mapping ownership simple. On platforms without mmap, it uses
+the portable memory-backed file path. Builder input vectors remain in memory.

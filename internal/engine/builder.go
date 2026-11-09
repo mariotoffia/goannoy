@@ -84,6 +84,9 @@ func (b *Builder) AddWords(id goannoy.ItemID, v []uint64) error {
 	return nil
 }
 func (b *Builder) Build(ctx context.Context) (*Index, error) {
+	if path := b.Config.Resolve().Path; path != "" {
+		return b.BuildTo(ctx, path)
+	}
 	data, err := b.build(ctx)
 	if err != nil {
 		return nil, err
@@ -94,17 +97,32 @@ func (b *Builder) BuildTo(ctx context.Context, path string) (*Index, error) {
 	if path == "" {
 		return nil, goannoy.ErrInvalidOption
 	}
-	data, err := b.build(ctx)
+	err := core.AtomicWrite(path, func(f *os.File) error {
+		if b.Config.Resolve().Path != "" {
+			storage := core.NewMutableFile(f)
+			_, err := b.buildWithStorage(ctx, storage)
+			closeErr := storage.Close()
+			if err != nil {
+				return err
+			}
+			return closeErr
+		}
+		data, err := b.build(ctx)
+		if err != nil {
+			return err
+		}
+		_, err = f.Write(data)
+		return err
+	})
 	if err != nil {
-		return nil, err
-	}
-	// Task 9 replaces this write with a transactional file commit.
-	if err := os.WriteFile(path, data, 0600); err != nil {
 		return nil, err
 	}
 	return Open(path, b.layout.Kind, b.layout.Dimension)
 }
 func (b *Builder) build(ctx context.Context) ([]byte, error) {
+	return b.buildWithStorage(ctx, nil)
+}
+func (b *Builder) buildWithStorage(ctx context.Context, storage *core.MutableFile) ([]byte, error) {
 	if err := b.Config.Err(); err != nil {
 		return nil, err
 	}
@@ -119,7 +137,16 @@ func (b *Builder) build(ctx context.Context) ([]byte, error) {
 	if items == 0 {
 		return nil, fmt.Errorf("%w: no items", goannoy.ErrInvalidOption)
 	}
-	data := append([]byte(nil), b.items...)
+	var data []byte
+	if storage != nil {
+		var err error
+		data, err = storage.Append(b.items)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		data = append([]byte(nil), b.items...)
+	}
 	if l.Kind == codec.Dot {
 		preprocessDot(l, data)
 	}
@@ -130,7 +157,7 @@ func (b *Builder) build(ctx context.Context) ([]byte, error) {
 		}
 	}
 	settings := b.Config.Resolve()
-	if settings.Workers > 1 && settings.Trees > 1 {
+	if storage == nil && settings.Workers > 1 && settings.Trees > 1 {
 		data, err := parallelForest(ctx, l, data, ids, settings)
 		if err != nil {
 			return nil, err
@@ -142,7 +169,7 @@ func (b *Builder) build(ctx context.Context) ([]byte, error) {
 		}
 		return data, nil
 	}
-	s := treeBuilder{layout: l, data: data, items: items, ctx: ctx, random: core.NewKiss64(settings.Seed)}
+	s := treeBuilder{layout: l, data: data, items: items, ctx: ctx, random: core.NewKiss64(settings.Seed), storage: storage}
 	roots := make([]int32, 0, settings.Trees)
 	for n := 0; n < settings.Trees; n++ {
 		root, err := s.tree(ids, true)
@@ -152,7 +179,10 @@ func (b *Builder) build(ctx context.Context) ([]byte, error) {
 		roots = append(roots, root)
 	}
 	for _, root := range roots {
-		s.data = append(s.data, l.Node(s.data, int(root))...)
+		copyNode := append([]byte(nil), l.Node(s.data, int(root))...)
+		if _, err := s.appendNode(copyNode); err != nil {
+			return nil, err
+		}
 	}
 	if l.Kind == codec.Dot {
 		for id := 0; id < items; id++ {

@@ -10,17 +10,26 @@ import (
 )
 
 type treeBuilder struct {
-	layout codec.Layout
-	data   []byte
-	items  int
-	ctx    context.Context
-	random *core.Kiss64
+	layout  codec.Layout
+	data    []byte
+	items   int
+	ctx     context.Context
+	random  *core.Kiss64
+	storage *core.MutableFile
 }
 
-func (s *treeBuilder) appendNode(n []byte) int32 {
+func (s *treeBuilder) appendNode(n []byte) (int32, error) {
 	id := int32(len(s.data) / s.layout.Stride)
+	if s.storage != nil {
+		data, err := s.storage.Append(n)
+		if err != nil {
+			return 0, err
+		}
+		s.data = data
+		return id, nil
+	}
 	s.data = append(s.data, n...)
-	return id
+	return id, nil
 }
 func imbalance(a, b int) float64 {
 	f := float32(float64(float32(a)) / (float64(float32(a)) + float64(float32(b)) + 1e-9))
@@ -44,7 +53,7 @@ func (s *treeBuilder) tree(ids []int32, root bool) (int32, error) {
 		for j, id := range ids {
 			codec.PutI32(plane, l.ChildrenOffset+4*j, id)
 		}
-		return s.appendNode(plane), nil
+		return s.appendNode(plane)
 	}
 	sides := [2][]int32{make([]int32, 0, len(ids)), make([]int32, 0, len(ids))}
 	for attempt := 0; attempt < 3; attempt++ {
@@ -99,5 +108,5 @@ func (s *treeBuilder) tree(ids []int32, root bool) (int32, error) {
 	if len(s.data)/l.Stride >= math.MaxInt32 {
 		return 0, goannoy.ErrInvalidOption
 	}
-	return s.appendNode(plane), nil
+	return s.appendNode(plane)
 }
