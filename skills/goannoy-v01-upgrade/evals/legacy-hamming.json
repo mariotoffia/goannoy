@@ -1,0 +1,5 @@
+{
+  "id": "legacy-hamming",
+  "prompt": "Deploy today using an older GoAnnoy Hamming file with130 float32 entries per vector. Original vectors are unavailable. Preserve the file if possible; provide replacement load/search code and disclose blockers.",
+  "assertions": ["Known old float-per-bit file requires rebuild", "Missing source data is a deployment blocker", "No unsafe byte conversion or file overwrite", "Any load example is gated on independently verified standard-file provenance", "130bits require three uint64 words with only two low tail bits usable", "No claim that temporary tests verify the unavailable production file"]
+}
