@@ -1,4 +1,4 @@
-//go:build amd64 && !goannoy_scalar
+//go:build amd64 && !goannoy_scalar && (!goannoy_experimental_simd || !goexperiment.simd)
 
 #include "textflag.h"
 
