@@ -1,6 +1,7 @@
 package internal_test
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,13 +24,24 @@ func TestRuntimeDependencyPolicy(t *testing.T) {
 }
 
 func TestSingleMetricDoesNotLinkOtherEngines(t *testing.T) {
+	for _, name := range []string{"angular", "dot", "euclidean", "manhattan", "hamming"} {
+		t.Run(name, func(t *testing.T) { checkMetricFootprint(t, name) })
+	}
+}
+
+func checkMetricFootprint(t *testing.T, name string) {
+	t.Helper()
 	dir := t.TempDir()
 	source := filepath.Join(dir, "main.go")
 	binary := filepath.Join(dir, "consumer.out")
-	code := `package main
-import("fmt";"github.com/mariotoffia/goannoy/angular")
-func main(){b,_:=angular.NewBuilder(2);b.Add(0,[]float32{1,0});i,_:=b.Build(nil);defer i.Close();r,e:=i.NewSearcher().Search([]float32{1,0},1,-1);fmt.Println(r,e)}
-`
+	vector := "[]float32{1,0}"
+	if name == "hamming" {
+		vector = "[]uint64{1}"
+	}
+	code := fmt.Sprintf(`package main
+import("fmt";"github.com/mariotoffia/goannoy/%s")
+func main(){b,_:=%s.NewBuilder(2);b.Add(0,%s);i,_:=b.Build(nil);defer i.Close();r,e:=i.NewSearcher().Search(%s,1,-1);fmt.Println(r,e)}
+`, name, name, vector, vector)
 	if e := os.WriteFile(source, []byte(code), 0600); e != nil {
 		t.Fatal(e)
 	}
@@ -42,9 +54,22 @@ func main(){b,_:=angular.NewBuilder(2);b.Add(0,[]float32{1,0});i,_:=b.Build(nil)
 	if e != nil {
 		t.Fatalf("%v: %s", e, out)
 	}
-	for _, symbol := range []string{"(*Searcher).searchHamming", "(*Searcher).searchDot", "(*Searcher).searchManhattan", "(*Searcher).searchEuclidean", "metric.splitHamming"} {
-		if strings.Contains(string(out), symbol) {
-			t.Errorf("angular consumer retains %s", symbol)
+	for _, other := range []string{"Angular", "Dot", "Euclidean", "Manhattan", "Hamming"} {
+		if strings.EqualFold(name, other) {
+			continue
+		}
+		if strings.Contains(string(out), "(*Searcher).search"+other) {
+			t.Errorf("%s consumer retains %s search engine", name, other)
 		}
 	}
+	cmd = exec.Command("go", "build", "-trimpath", "-ldflags=-s -w", "-o", binary, source)
+	cmd.Dir = ".."
+	if out, e := cmd.CombinedOutput(); e != nil {
+		t.Fatalf("stripped build: %v: %s", e, out)
+	}
+	info, e := os.Stat(binary)
+	if e != nil {
+		t.Fatal(e)
+	}
+	t.Logf("%s stripped consumer: %d bytes", name, info.Size())
 }

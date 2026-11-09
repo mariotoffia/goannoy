@@ -26,3 +26,19 @@ func TestDotBackendsMatchReference(t *testing.T) {
 		}
 	}
 }
+
+func TestScalarDotKeepsSequentialOrder(t *testing.T) {
+	// Reassociating these products loses different low bits. Scalar search must
+	// keep its original order even when loop control is unrolled.
+	a := []float32{16777216, 1, -16777216, 3, 16777216, 1, -16777216, 5, 2}
+	b := []float32{1, 1, 1, 1, 1, 1, 1, 1, 1}
+	for n := 0; n <= len(a); n++ {
+		var want float32
+		for j := 0; j < n; j++ {
+			want += float32(a[j] * b[j])
+		}
+		if got := ScalarDot(a[:n], b[:n]); got != want {
+			t.Fatalf("n=%d got=%g want=%g", n, got, want)
+		}
+	}
+}

@@ -39,3 +39,10 @@ Experimental AMD64 Go SIMD is pinned to Go 1.27.3 and requires both
 `GOEXPERIMENT=simd` and `-tags goannoy_experimental_simd`.
 Without the experiment, stable SSE2 remains available. Unsupported CPUs use
 scalar in the experimental build. The normal build never imports archsimd.
+
+Final verification (1s search samples) after scalar loop-control unrolling:
+scalar 17,283;17,309;17,607;18,521;17,798ns, median17,607ns (48.9% of36µs).
+NEON 9,334;8,210;8,541;8,367;9,107ns, median8,541ns (38.8% of22µs).
+Both remain0B/op,0allocs/op. Final build median153.48ms,25.78MB/op,
+about6,241allocs/op. See [release evidence](../docs/release/v0.1.0-benchmarks.md)
+for all samples, footprint and caveats.

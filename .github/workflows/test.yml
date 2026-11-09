@@ -1,0 +1,96 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stable:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            go: '1.26.x'
+          - os: ubuntu-24.04
+            go: '1.27.3'
+          - os: ubuntu-24.04-arm
+            go: '1.27.3'
+          - os: macos-latest
+            go: '1.27.3'
+          - os: windows-latest
+            go: '1.27.3'
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: ${{ matrix.go }}
+      - run: go version
+      - run: make test vet build
+      - run: go test -tags goannoy_scalar ./...
+      - name: Generated sources are reproducible
+        run: |
+          go generate ./internal/engine
+          git diff --exit-code
+
+  instrumented:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.27.3'
+      - run: make test-race test-checkptr
+
+  cross-build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.27.3'
+      - name: Compile portable targets (including big-endian rejection path)
+        run: |
+          for target in linux/386 linux/ppc64 linux/riscv64 freebsd/amd64 windows/arm64; do
+            GOOS="${target%/*}" GOARCH="${target#*/}" go build ./...
+          done
+
+  experimental-simd:
+    runs-on: ubuntu-24.04
+    env:
+      GOEXPERIMENT: simd
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.27.3'
+      - run: go test -tags goannoy_experimental_simd ./...
+      - run: go vet -tags goannoy_experimental_simd ./...
+
+  fuzz:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.27.3'
+      - run: go test ./internal/core -run '^$' -fuzz FuzzOpenIndex -fuzztime=60s
