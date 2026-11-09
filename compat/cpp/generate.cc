@@ -8,6 +8,7 @@ using namespace Annoy;
 constexpr int items = 64;
 constexpr int trees = 3;
 constexpr uint64_t seed = 42;
+int search_k = 10000;
 template<class Metric>
 void floats(const std::string& dir, const char* metric, bool read) {
   AnnoyIndex<int32_t,float,Metric,Kiss64Random,AnnoyIndexSingleThreadedBuildPolicy> idx(3);
@@ -25,7 +26,7 @@ void floats(const std::string& dir, const char* metric, bool read) {
   }
   float query[3]={1.25f,-2.5f,0.75f};
   std::vector<int32_t> ids; std::vector<float> dist;
-  idx.get_nns_by_vector(query,10,10000,&ids,&dist);
+  idx.get_nns_by_vector(query,10,search_k,&ids,&dist);
   std::cout << "{\"metric\":\"" << metric << "\",\"dimension\":3,\"ids\":[";
   for(size_t i=0;i<ids.size();i++) std::cout<<(i?",":"")<<ids[i];
   std::cout << "],\"distances\":[";
@@ -46,7 +47,7 @@ void hamming(const std::string& dir,bool read) {
   }
   uint64_t query[3]={0x123456789abcdef0ULL,0xfedcba9876543210ULL,1};
   std::vector<int32_t> ids; std::vector<uint64_t> dist;
-  idx.get_nns_by_vector(query,10,10000,&ids,&dist);
+  idx.get_nns_by_vector(query,10,search_k,&ids,&dist);
   std::cout<<"{\"metric\":\"hamming\",\"dimension\":130,\"ids\":[";
   for(size_t i=0;i<ids.size();i++)std::cout<<(i?",":"")<<ids[i];
   std::cout<<"],\"distances\":[";
@@ -54,7 +55,8 @@ void hamming(const std::string& dir,bool read) {
   std::cout<<"]}";
 }
 int main(int argc,char**argv) {
-  if(argc!=3) return 1;
+  if(argc!=3 && argc!=4) return 1;
+  if(argc==4) search_k=std::atoi(argv[3]);
   bool read=std::string(argv[1])=="read";
   std::cout<<"{\"upstream\":\"379f744667aba6b40ba3db8a07678df173a88f74\",\"seed\":42,\"trees\":3,\"items\":64,\"fixtures\":[";
   floats<Angular>(argv[2],"angular",read); std::cout<<",";
