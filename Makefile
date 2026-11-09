@@ -1,5 +1,7 @@
 .PHONY: setup build run test test-race test-checkptr vet lint bench compat clean
 
+RUNTIME_PACKAGES := .,./angular,./dot,./euclidean,./manhattan,./hamming,./internal/backend,./internal/codec,./internal/core,./internal/engine,./internal/metric,./cmd/precision
+
 setup:
 	go mod download
 
@@ -11,7 +13,8 @@ run:
 	go run ./cmd/precision
 
 test:
-	go test -timeout 120s -coverprofile=coverage.out ./...
+	go test -timeout 120s -coverpkg=$(RUNTIME_PACKAGES) -coverprofile=coverage.out ./...
+	go run ./internal/cmd/covercheck -profile coverage.out
 
 test-race:
 	go test -race ./...

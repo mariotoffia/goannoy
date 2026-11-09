@@ -21,5 +21,8 @@ func TestDotBackendsMatchReference(t *testing.T) {
 		if math.Abs(float64(got)-want) > 2e-5*math.Max(1, math.Abs(want)) {
 			t.Fatalf("n=%d got=%g want=%g", n, got, want)
 		}
+		if scalar := ScalarDot(a[1:], b[1:]); math.Abs(float64(scalar)-want) > 2e-5*math.Max(1, math.Abs(want)) {
+			t.Fatalf("scalar n=%d got=%g want=%g", n, scalar, want)
+		}
 	}
 }

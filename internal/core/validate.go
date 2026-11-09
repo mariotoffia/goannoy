@@ -19,6 +19,7 @@ func Validate(data []byte, l codec.Layout) (IndexInfo, error) {
 	bad := func(reason string) (IndexInfo, error) {
 		return IndexInfo{}, fmt.Errorf("%w: %s", goannoy.ErrCorruptIndex, reason)
 	}
+	finite := func(x float32) bool { return !math.IsNaN(float64(x)) && !math.IsInf(float64(x), 0) }
 	if l.Stride < 1 || len(data) == 0 || len(data)%l.Stride != 0 {
 		return bad("invalid file length")
 	}
@@ -70,6 +71,13 @@ func Validate(data []byte, l codec.Layout) (IndexInfo, error) {
 					if l.CheckFloats(l.Floats(data, id)) != nil {
 						return bad("non-finite item")
 					}
+					node := l.Node(data, id)
+					if l.Kind == codec.Angular && (!finite(codec.F32(node, 4)) || codec.F32(node, 4) < 0) {
+						return bad("invalid angular norm")
+					}
+					if l.Kind == codec.Dot && (!finite(codec.F32(node, 12)) || codec.F32(node, 12) < 0 || !finite(codec.F32(node, 16)) || codec.F32(node, 16) < 0 || node[20] != 1) {
+						return bad("invalid dot item metadata")
+					}
 				}
 			}
 			continue
@@ -97,6 +105,13 @@ func Validate(data []byte, l codec.Layout) (IndexInfo, error) {
 				}
 			} else if l.CheckFloats(l.Floats(data, id)) != nil {
 				return bad("non-finite split")
+			}
+			node := l.Node(data, id)
+			if l.Kind == codec.Dot && !finite(codec.F32(node, 12)) {
+				return bad("invalid dot plane factor")
+			}
+			if (l.Kind == codec.Euclidean || l.Kind == codec.Manhattan) && !finite(codec.F32(node, 4)) {
+				return bad("invalid plane offset")
 			}
 		}
 	}

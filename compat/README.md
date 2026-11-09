@@ -22,3 +22,12 @@ The C++ executable has two modes: `write DIRECTORY` builds fixtures and
 `read DIRECTORY` independently loads and queries saved files. Both emit
 JSON query expectations. The Go generator records SHA-256 digests.
 Normal tests require the committed fixtures and do not require C++.
+
+Run the explicit Go -> C++ release gate from the repository root:
+
+```sh
+ANNOY_SOURCE=/absolute/path/to/pinned/annoy go test -tags cppcompat ./compat -v
+```
+
+That gate builds the C++ reader and queries Go-built files for every metric in
+both serial and parallel modes. Missing C++ tools or source fail the gate.
