@@ -27,6 +27,33 @@ func Split(l codec.Layout, data []byte, ids []int32, r *core.Kiss64, plane []byt
 		splitHamming(l, data, ids, r, plane)
 		return
 	}
+	raw := RawAngular
+	switch l.Kind {
+	case codec.Dot:
+		raw = RawDot
+	case codec.Euclidean:
+		raw = RawEuclidean
+	case codec.Manhattan:
+		raw = RawManhattan
+	}
+	splitFloat(l, data, ids, r, plane, raw)
+}
+func SplitAngular(l codec.Layout, data []byte, ids []int32, r *core.Kiss64, plane []byte) {
+	splitFloat(l, data, ids, r, plane, RawAngular)
+}
+func SplitDot(l codec.Layout, data []byte, ids []int32, r *core.Kiss64, plane []byte) {
+	splitFloat(l, data, ids, r, plane, RawDot)
+}
+func SplitEuclidean(l codec.Layout, data []byte, ids []int32, r *core.Kiss64, plane []byte) {
+	splitFloat(l, data, ids, r, plane, RawEuclidean)
+}
+func SplitManhattan(l codec.Layout, data []byte, ids []int32, r *core.Kiss64, plane []byte) {
+	splitFloat(l, data, ids, r, plane, RawManhattan)
+}
+func SplitHamming(l codec.Layout, data []byte, ids []int32, r *core.Kiss64, plane []byte) {
+	splitHamming(l, data, ids, r, plane)
+}
+func splitFloat(l codec.Layout, data []byte, ids []int32, r *core.Kiss64, plane []byte, raw RawFunc) {
 	scratch := make([]byte, l.Stride*2)
 	p, q := scratch[:l.Stride], scratch[l.Stride:]
 	a, b := r.Index(len(ids)), r.Index(len(ids)-1)
@@ -49,7 +76,7 @@ func Split(l codec.Layout, data []byte, ids []int32, r *core.Kiss64, plane []byt
 	ic, jc := 1, 1
 	for step := 0; step < 200; step++ {
 		item := l.Node(data, int(ids[r.Index(len(ids))]))
-		di, dj := float32(ic)*Raw(l, p, item), float32(jc)*Raw(l, q, item)
+		di, dj := float32(ic)*raw(l, p, item), float32(jc)*raw(l, q, item)
 		norm := float32(1)
 		if cosine {
 			norm = Norm(l, item)

@@ -48,5 +48,5 @@ func (i *Index) Distance(a, b goannoy.ItemID) (float32, error) {
 		return 0, goannoy.ErrInvalidID
 	}
 	l, data := i.layout, i.mapping.Data
-	return metric.Normalize(l.Kind, metric.Raw(l, l.Node(data, int(a)), l.Node(data, int(b)))), nil
+	return metric.Normalize(l.Kind, i.spec.raw(l, l.Node(data, int(a)), l.Node(data, int(b)))), nil
 }

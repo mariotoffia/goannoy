@@ -13,7 +13,7 @@ type treeResult struct {
 	err   error
 }
 
-func parallelForest(ctx context.Context, l codec.Layout, items []byte, ids []int32, settings core.Settings) ([]byte, error) {
+func parallelForest(ctx context.Context, l codec.Layout, items []byte, ids []int32, settings core.Settings, spec Spec) ([]byte, error) {
 	results := make([]treeResult, settings.Trees)
 	jobs := make(chan int)
 	var wg sync.WaitGroup
@@ -24,7 +24,7 @@ func parallelForest(ctx context.Context, l codec.Layout, items []byte, ids []int
 			defer wg.Done()
 			for n := range jobs {
 				// Full slice capacity forces the first append to copy. Item data is read-only.
-				s := treeBuilder{layout: l, data: items[:len(items):len(items)], items: count, ctx: ctx, random: core.NewKiss64(settings.Seed + uint64(n))}
+				s := treeBuilder{layout: l, data: items[:len(items):len(items)], items: count, ctx: ctx, random: core.NewKiss64(settings.Seed + uint64(n)), spec: spec}
 				root, err := s.tree(ids, true)
 				if err != nil {
 					results[n].err = err

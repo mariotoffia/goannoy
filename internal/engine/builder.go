@@ -15,10 +15,14 @@ type Builder struct {
 	Config *core.BuildConfig
 	layout codec.Layout
 	items  []byte
+	spec   Spec
 }
 
 func NewBuilder(k codec.Kind, dimension int) (*Builder, error) {
-	l, err := codec.New(k, dimension)
+	return NewMetricBuilder(specForKind(k), dimension)
+}
+func NewMetricBuilder(spec Spec, dimension int) (*Builder, error) {
+	l, err := codec.New(spec.kind, dimension)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +30,7 @@ func NewBuilder(k codec.Kind, dimension int) (*Builder, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Builder{Config: c, layout: l}, nil
+	return &Builder{Config: c, layout: l, spec: spec}, nil
 }
 func (b *Builder) prepare(id goannoy.ItemID) ([]byte, error) {
 	if err := b.Config.Err(); err != nil {
@@ -91,7 +95,7 @@ func (b *Builder) Build(ctx context.Context) (*Index, error) {
 	if err != nil {
 		return nil, err
 	}
-	return FromMapping(&core.Mapping{Data: data}, b.layout)
+	return fromMapping(&core.Mapping{Data: data}, b.layout, b.spec)
 }
 func (b *Builder) BuildTo(ctx context.Context, path string) (*Index, error) {
 	if path == "" {
@@ -117,7 +121,7 @@ func (b *Builder) BuildTo(ctx context.Context, path string) (*Index, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Open(path, b.layout.Kind, b.layout.Dimension)
+	return OpenMetric(path, b.spec, b.layout.Dimension)
 }
 func (b *Builder) build(ctx context.Context) ([]byte, error) {
 	return b.buildWithStorage(ctx, nil)
@@ -158,7 +162,7 @@ func (b *Builder) buildWithStorage(ctx context.Context, storage *core.MutableFil
 	}
 	settings := b.Config.Resolve()
 	if storage == nil && settings.Workers > 1 && settings.Trees > 1 {
-		data, err := parallelForest(ctx, l, data, ids, settings)
+		data, err := parallelForest(ctx, l, data, ids, settings, b.spec)
 		if err != nil {
 			return nil, err
 		}
@@ -169,7 +173,7 @@ func (b *Builder) buildWithStorage(ctx context.Context, storage *core.MutableFil
 		}
 		return data, nil
 	}
-	s := treeBuilder{layout: l, data: data, items: items, ctx: ctx, random: core.NewKiss64(settings.Seed), storage: storage}
+	s := treeBuilder{layout: l, data: data, items: items, ctx: ctx, random: core.NewKiss64(settings.Seed), storage: storage, spec: b.spec}
 	roots := make([]int32, 0, settings.Trees)
 	for n := 0; n < settings.Trees; n++ {
 		root, err := s.tree(ids, true)

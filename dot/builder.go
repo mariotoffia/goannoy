@@ -3,7 +3,6 @@ package dot
 import (
 	"context"
 	goannoy "github.com/mariotoffia/goannoy"
-	"github.com/mariotoffia/goannoy/internal/codec"
 	"github.com/mariotoffia/goannoy/internal/engine"
 )
 
@@ -11,7 +10,7 @@ import (
 type Builder struct{ inner *engine.Builder }
 
 func NewBuilder(dimension int) (*Builder, error) {
-	b, err := engine.NewBuilder(codec.Dot, dimension)
+	b, err := engine.NewMetricBuilder(engine.DotSpec, dimension)
 	if err != nil {
 		return nil, err
 	}

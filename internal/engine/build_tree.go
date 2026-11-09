@@ -16,6 +16,7 @@ type treeBuilder struct {
 	ctx     context.Context
 	random  *core.Kiss64
 	storage *core.MutableFile
+	spec    Spec
 }
 
 func (s *treeBuilder) appendNode(n []byte) (int32, error) {
@@ -59,7 +60,7 @@ func (s *treeBuilder) tree(ids []int32, root bool) (int32, error) {
 	for attempt := 0; attempt < 3; attempt++ {
 		sides[0] = sides[0][:0]
 		sides[1] = sides[1][:0]
-		metric.Split(l, s.data, ids, s.random, plane)
+		s.spec.split(l, s.data, ids, s.random, plane)
 		for _, id := range ids {
 			margin := metric.BuildMargin(l, plane, l.Node(s.data, int(id)))
 			side := 0

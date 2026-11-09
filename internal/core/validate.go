@@ -38,12 +38,15 @@ func Validate(data []byte, l codec.Layout) (IndexInfo, error) {
 		return bad("missing roots")
 	}
 	// Tiny trees occupy one list node each and the entire root array is copied.
-	if items <= l.LeafCapacity && len(info.Roots)%2 == 0 {
+	duplicatedBlock := false
+	if len(info.Roots)%2 == 0 {
 		half := len(info.Roots) / 2
 		if bytes.Equal(data[(count-half*2)*l.Stride:(count-half)*l.Stride], data[(count-half)*l.Stride:]) {
 			info.Roots = info.Roots[:half]
+			duplicatedBlock = true
 		}
-	} else if len(info.Roots) > 1 {
+	}
+	if !duplicatedBlock && len(info.Roots) > 1 {
 		first, last := info.Roots[0], info.Roots[len(info.Roots)-1]
 		if l.Children(data, int(first))[0] == l.Children(data, int(last))[0] {
 			info.Roots = info.Roots[:len(info.Roots)-1]

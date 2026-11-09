@@ -3,7 +3,6 @@ package dot
 
 import (
 	goannoy "github.com/mariotoffia/goannoy"
-	"github.com/mariotoffia/goannoy/internal/codec"
 	"github.com/mariotoffia/goannoy/internal/engine"
 )
 
@@ -12,7 +11,7 @@ type Index struct{ inner *engine.Index }
 
 // Open validates and loads a standard headerless Annoy file.
 func Open(path string, dimension int, options ...goannoy.OpenOption) (*Index, error) {
-	i, err := engine.Open(path, codec.Dot, dimension, options...)
+	i, err := engine.OpenMetric(path, engine.DotSpec, dimension, options...)
 	if err != nil {
 		return nil, err
 	}

@@ -84,18 +84,7 @@ func (s *Searcher) search(dst []goannoy.Result, k goannoy.SearchK) (int, error) 
 		}
 		budget = len(dst) * len(i.info.Roots)
 	}
-	switch i.layout.Kind {
-	case codec.Angular:
-		return s.searchAngular(dst, budget)
-	case codec.Dot:
-		return s.searchDot(dst, budget)
-	case codec.Euclidean:
-		return s.searchEuclidean(dst, budget)
-	case codec.Manhattan:
-		return s.searchManhattan(dst, budget)
-	default:
-		return s.searchHamming(dst, budget)
-	}
+	return i.spec.search(s, dst, budget)
 }
 func compareResult(a, b goannoy.Result) int {
 	if core.Worse(a, b) {

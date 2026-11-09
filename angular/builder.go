@@ -3,7 +3,6 @@ package angular
 import (
 	"context"
 	goannoy "github.com/mariotoffia/goannoy"
-	"github.com/mariotoffia/goannoy/internal/codec"
 	"github.com/mariotoffia/goannoy/internal/engine"
 )
 
@@ -11,7 +10,7 @@ import (
 type Builder struct{ inner *engine.Builder }
 
 func NewBuilder(dimension int) (*Builder, error) {
-	b, err := engine.NewBuilder(codec.Angular, dimension)
+	b, err := engine.NewMetricBuilder(engine.AngularSpec, dimension)
 	if err != nil {
 		return nil, err
 	}

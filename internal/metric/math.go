@@ -53,28 +53,46 @@ func Init(l codec.Layout, b []byte) {
 		b[20] = 0
 	}
 }
+
+type RawFunc func(codec.Layout, []byte, []byte) float32
+
 func Raw(l codec.Layout, a, b []byte) float32 {
-	if l.Kind == codec.Hamming {
-		x, y := l.WordsAt(a, 0), l.WordsAt(b, 0)
-		d := 0
-		for n, v := range x {
-			d += bits.OnesCount64(v ^ y[n])
-		}
-		return float32(d)
-	}
-	x, y := l.Floats(a, 0), l.Floats(b, 0)
 	switch l.Kind {
-	case codec.Euclidean:
-		return Squared(x, y)
-	case codec.Manhattan:
-		return L1(x, y)
+	case codec.Angular:
+		return RawAngular(l, a, b)
 	case codec.Dot:
-		if a[20] != 0 || b[20] != 0 {
-			return -Dot(x, y)
-		}
+		return RawDot(l, a, b)
+	case codec.Euclidean:
+		return RawEuclidean(l, a, b)
+	case codec.Manhattan:
+		return RawManhattan(l, a, b)
+	default:
+		return RawHamming(l, a, b)
 	}
+}
+func RawHamming(l codec.Layout, a, b []byte) float32 {
+	x, y := l.WordsAt(a, 0), l.WordsAt(b, 0)
+	d := 0
+	for n, v := range x {
+		d += bits.OnesCount64(v ^ y[n])
+	}
+	return float32(d)
+}
+func RawEuclidean(l codec.Layout, a, b []byte) float32 {
+	return Squared(l.Floats(a, 0), l.Floats(b, 0))
+}
+func RawManhattan(l codec.Layout, a, b []byte) float32 { return L1(l.Floats(a, 0), l.Floats(b, 0)) }
+func RawAngular(l codec.Layout, a, b []byte) float32   { return angular(l, a, b, false) }
+func RawDot(l codec.Layout, a, b []byte) float32 {
+	if a[20] != 0 || b[20] != 0 {
+		return -Dot(l.Floats(a, 0), l.Floats(b, 0))
+	}
+	return angular(l, a, b, true)
+}
+func angular(l codec.Layout, a, b []byte, lift bool) float32 {
+	x, y := l.Floats(a, 0), l.Floats(b, 0)
 	off := 4
-	if l.Kind == codec.Dot {
+	if lift {
 		off = 16
 	}
 	pp, qq, pq := codec.F32(a, off), codec.F32(b, off), Dot(x, y)
@@ -84,7 +102,7 @@ func Raw(l codec.Layout, a, b []byte) float32 {
 	if qq == 0 {
 		qq = Dot(y, y)
 	}
-	if l.Kind == codec.Dot {
+	if lift {
 		af, bf := codec.F32(a, 12), codec.F32(b, 12)
 		if codec.F32(a, off) == 0 {
 			pp += float32(af * af)

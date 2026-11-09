@@ -21,7 +21,8 @@
 # Testfiles
 *.ann
 !compat/fixtures/*.ann
-*.tree
+/tests/*.tree
+.claude/settings.local.json
 results.txt
 coverage.out
 .work/
