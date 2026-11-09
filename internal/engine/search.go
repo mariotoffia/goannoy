@@ -71,7 +71,7 @@ func (s *Searcher) SearchID(id goannoy.ItemID, dst []goannoy.Result, k goannoy.S
 
 func (s *Searcher) search(dst []goannoy.Result, k goannoy.SearchK) (int, error) {
 	i := s.index
-	if k < goannoy.AutoSearchK {
+	if k < goannoy.AutoSearchK || k == 0 {
 		return 0, goannoy.ErrInvalidSearchK
 	}
 	if len(dst) == 0 {

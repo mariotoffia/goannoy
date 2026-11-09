@@ -21,6 +21,9 @@ c++ -std=c++17 -O2 -ffp-contract=off -fno-tree-vectorize \
 The C++ executable has two modes: `write DIRECTORY` builds fixtures and
 `read DIRECTORY` independently loads and queries saved files. Both emit
 JSON query expectations. The Go generator records SHA-256 digests.
+Before hashing it zeros only C++-uninitialized dot/Hamming split fields and
+padding. All defined fields and query expectations still come from C++;
+canonicalization is necessary for reproducible files rather than stack garbage.
 Normal tests require the committed fixtures and do not require C++.
 
 Run the explicit Go -> C++ release gate from the repository root:

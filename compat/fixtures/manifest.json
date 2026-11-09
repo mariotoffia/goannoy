@@ -56,7 +56,7 @@
         61
       ],
       "metric": "dot",
-      "sha256": "879d4d4fa9e575564c0d1673e0019ec0dcc6366f48c5f81a29a2ceb1fc99df6c"
+      "sha256": "9accc33d960354489f53ff0599d671a331ff8f38b3ca9aa3ab8eeb2bf101a977"
     },
     {
       "dimension": 3,
@@ -143,7 +143,7 @@
         60
       ],
       "metric": "hamming",
-      "sha256": "701d83aedac3cde18d5c09f1b21145f30a0d8bb313e24aff2a575c2b111aec9a"
+      "sha256": "a3d2385bc433230965b497c957b80fd8ab7065e008d0400720ef506166e498d8"
     }
   ],
   "items": 64,

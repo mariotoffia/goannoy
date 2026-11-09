@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/mariotoffia/goannoy/internal/codec"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -55,6 +56,15 @@ func generate() error {
 		name := f["metric"].(string)
 		data, e := os.ReadFile("fixtures/" + name + ".ann")
 		if e != nil {
+			return e
+		}
+		kind := map[string]codec.Kind{"angular": codec.Angular, "dot": codec.Dot, "euclidean": codec.Euclidean, "manhattan": codec.Manhattan, "hamming": codec.Hamming}[name]
+		layout, e := codec.New(kind, int(f["dimension"].(float64)))
+		if e != nil {
+			return e
+		}
+		canonicalPadding(data, layout)
+		if e := os.WriteFile("fixtures/"+name+".ann", data, 0644); e != nil {
 			return e
 		}
 		sum := sha256.Sum256(data)
