@@ -41,6 +41,10 @@ type Layout struct {
 }
 
 func New(k Kind, dimension int) (Layout, error) {
+	var endian uint32 = 1
+	if *(*byte)(unsafe.Pointer(&endian)) != 1 {
+		return Layout{}, goannoy.ErrUnsupportedPlatform
+	}
 	if dimension < 1 || dimension > (math.MaxInt32-24)/8 {
 		return Layout{}, fmt.Errorf("%w: %d", goannoy.ErrInvalidDimension, dimension)
 	}
@@ -69,9 +73,12 @@ func New(k Kind, dimension int) (Layout, error) {
 }
 func I32(b []byte, off int) int32       { return int32(binary.LittleEndian.Uint32(b[off:])) }
 func PutI32(b []byte, off int, v int32) { binary.LittleEndian.PutUint32(b[off:], uint32(v)) }
-func F32(b []byte, off int) float32     { return math.Float32frombits(binary.LittleEndian.Uint32(b[off:])) }
+
+// Float fields share the native, little-endian representation of vector views.
+// Direct field loads also avoid checkptr=2 heap promotion in math bit casts.
+func F32(b []byte, off int) float32 { return *(*float32)(unsafe.Pointer(&b[off : off+4][0])) }
 func PutF32(b []byte, off int, v float32) {
-	binary.LittleEndian.PutUint32(b[off:], math.Float32bits(v))
+	*(*float32)(unsafe.Pointer(&b[off : off+4][0])) = v
 }
 func (l Layout) Node(b []byte, id int) []byte       { return b[id*l.Stride : (id+1)*l.Stride] }
 func (l Layout) Descendants(b []byte, id int) int32 { return I32(b, id*l.Stride) }

@@ -25,3 +25,17 @@ One new build run was an outlier; this is why the evidence lists every run.
 
 Compatibility is measured independently against pinned C++ query results.
 Timing is a benchmark result, never a correctness assertion.
+
+After direct metric-specific traversal and NEON integration, default accelerated
+search runs were 8,110; 7,513; 7,533; 7,579; 9,700 ns/op.
+Median: 7,579 ns/op, 0 B/op, 0 allocs/op. This is 34.5% of the reviewed
+22-microsecond accelerated baseline and passes the 75% release gate.
+
+Use `-tags goannoy_scalar` to force portable search kernels.
+Stable defaults use ARM64 NEON or AMD64 SSE2; other platforms use scalar.
+Deterministic builds always use scalar metric arithmetic.
+
+Experimental AMD64 Go SIMD is pinned to Go 1.27.3 and requires both
+`GOEXPERIMENT=simd` and `-tags goannoy_experimental_simd`.
+Without the experiment, stable SSE2 remains available. Unsupported CPUs use
+scalar in the experimental build. The normal build never imports archsimd.

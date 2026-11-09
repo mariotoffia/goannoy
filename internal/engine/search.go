@@ -6,7 +6,6 @@ import (
 	"github.com/mariotoffia/goannoy/internal/core"
 	"github.com/mariotoffia/goannoy/internal/metric"
 	"math"
-	"slices"
 )
 
 // Searcher is scratch owned by one caller; Index remains immutable.
@@ -16,6 +15,8 @@ type Searcher struct {
 	ids   []int32
 	query []byte
 }
+
+var positiveInfinity = float32(math.Inf(1))
 
 func (i *Index) NewSearcher() *Searcher {
 	return &Searcher{index: i, query: make([]byte, i.layout.Stride)}
@@ -65,9 +66,11 @@ func (s *Searcher) SearchID(id goannoy.ItemID, dst []goannoy.Result, k goannoy.S
 	}
 	return s.search(dst, k)
 }
+
+//go:generate go run ../genengine
+
 func (s *Searcher) search(dst []goannoy.Result, k goannoy.SearchK) (int, error) {
 	i := s.index
-	l, data := i.layout, i.mapping.Data
 	if k < goannoy.AutoSearchK {
 		return 0, goannoy.ErrInvalidSearchK
 	}
@@ -81,74 +84,32 @@ func (s *Searcher) search(dst []goannoy.Result, k goannoy.SearchK) (int, error) 
 		}
 		budget = len(dst) * len(i.info.Roots)
 	}
-	s.queue = s.queue[:0]
-	s.ids = s.ids[:0]
-	initial := float32(math.Inf(1))
-	if l.Kind == codec.Hamming {
-		// Translation by a constant preserves the integer penalty ordering.
-		// Infinity (or rounded uint64 max) would swallow one-bit penalties.
-		initial = 0
+	switch i.layout.Kind {
+	case codec.Angular:
+		return s.searchAngular(dst, budget)
+	case codec.Dot:
+		return s.searchDot(dst, budget)
+	case codec.Euclidean:
+		return s.searchEuclidean(dst, budget)
+	case codec.Manhattan:
+		return s.searchManhattan(dst, budget)
+	default:
+		return s.searchHamming(dst, budget)
 	}
-	for _, root := range i.info.Roots {
-		s.queue.Push(core.Candidate{Priority: initial, ID: root})
+}
+func compareResult(a, b goannoy.Result) int {
+	if core.Worse(a, b) {
+		return 1
 	}
-	for len(s.ids) < budget && len(s.queue) > 0 {
-		c := s.queue.Pop()
-		id := int(c.ID)
-		n := int(l.Descendants(data, id))
-		if n == 1 && id < i.info.Items {
-			s.ids = append(s.ids, c.ID)
-		} else if n <= l.LeafCapacity {
-			off := id*l.Stride + l.ChildrenOffset
-			for j := 0; j < n; j++ {
-				s.ids = append(s.ids, codec.I32(data, off+j*4))
-			}
-		} else {
-			// Query dot factors are zero; other metrics use the same margin as build.
-			margin := metric.BuildMargin(l, l.Node(data, id), s.query)
-			children := l.Children(data, id)
-			for side := 1; side >= 0; side-- {
-				priority := c.Priority
-				if l.Kind == codec.Hamming {
-					if int(margin) != side {
-						priority--
-					}
-				} else {
-					signed := margin
-					if side == 0 {
-						signed = -signed
-					}
-					priority = min(priority, signed)
-				}
-				s.queue.Push(core.Candidate{Priority: priority, ID: children[side]})
-			}
-		}
+	if core.Worse(b, a) {
+		return -1
 	}
-	slices.Sort(s.ids)
-	n := 0
-	last := int32(-1)
-	for _, id := range s.ids {
-		if id == last {
-			continue
-		}
-		last = id
-		if l.Descendants(data, int(id)) != 1 {
-			continue
-		}
-		raw := metric.Raw(l, s.query, l.Node(data, int(id)))
-		n = core.Offer(dst, n, goannoy.Result{ID: goannoy.ItemID(id), Distance: raw})
+	return 0
+}
+func angularRaw(pq, pp, qq float32) float32 {
+	product := float32(pp * qq)
+	if product > 0 {
+		return float32(2 - 2*float64(pq)/math.Sqrt(float64(product)))
 	}
-	slices.SortFunc(dst[:n], func(a, b goannoy.Result) int {
-		if core.Worse(a, b) {
-			return 1
-		}
-		if core.Worse(b, a) {
-			return -1
-		}
-		return 0
-	})
-	for j := 0; j < n; j++ {
-		dst[j].Distance = metric.Normalize(l.Kind, dst[j].Distance)
-	}
-	return n, nil
+	return 2
 }
