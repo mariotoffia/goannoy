@@ -129,9 +129,22 @@ func (b *Builder) build(ctx context.Context) ([]byte, error) {
 			ids = append(ids, int32(id))
 		}
 	}
-	s := treeBuilder{layout: l, data: data, items: items, ctx: ctx, random: core.NewKiss64(b.Config.Resolve().Seed)}
-	roots := make([]int32, 0, b.Config.Resolve().Trees)
-	for n := 0; n < b.Config.Resolve().Trees; n++ {
+	settings := b.Config.Resolve()
+	if settings.Workers > 1 && settings.Trees > 1 {
+		data, err := parallelForest(ctx, l, data, ids, settings)
+		if err != nil {
+			return nil, err
+		}
+		if l.Kind == codec.Dot {
+			for id := 0; id < items; id++ {
+				l.Node(data, id)[20] = 1
+			}
+		}
+		return data, nil
+	}
+	s := treeBuilder{layout: l, data: data, items: items, ctx: ctx, random: core.NewKiss64(settings.Seed)}
+	roots := make([]int32, 0, settings.Trees)
+	for n := 0; n < settings.Trees; n++ {
 		root, err := s.tree(ids, true)
 		if err != nil {
 			return nil, err

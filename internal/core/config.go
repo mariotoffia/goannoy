@@ -82,6 +82,9 @@ func (c *BuildConfig) OnDisk(path string) *BuildConfig {
 func (c *BuildConfig) Err() error { return c.err }
 func (c *BuildConfig) Resolve() Settings {
 	workers := runtime.GOMAXPROCS(0)
+	if c.profile == goannoy.Balanced {
+		workers = min(workers, 4)
+	}
 	if c.profile == goannoy.LowMemory {
 		workers = 1
 	}
