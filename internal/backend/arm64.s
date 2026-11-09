@@ -1,0 +1,56 @@
+//go:build arm64 && !goannoy_scalar
+
+#include "textflag.h"
+
+TEXT ·dotAsm(SB), NOSPLIT, $0-28
+ MOVD a+0(FP), R0
+ MOVD b+8(FP), R1
+ MOVD n+16(FP), R2
+ VEOR V0.B16, V0.B16, V0.B16
+ VEOR V1.B16, V1.B16, V1.B16
+ VEOR V2.B16, V2.B16, V2.B16
+ VEOR V3.B16, V3.B16, V3.B16
+loop16:
+ CMP $16, R2
+ BLT merge
+ VLD1.P 16(R0), [V4.S4]
+ VLD1.P 16(R1), [V5.S4]
+ VFMLA V5.S4, V4.S4, V0.S4
+ VLD1.P 16(R0), [V6.S4]
+ VLD1.P 16(R1), [V7.S4]
+ VFMLA V7.S4, V6.S4, V1.S4
+ VLD1.P 16(R0), [V8.S4]
+ VLD1.P 16(R1), [V9.S4]
+ VFMLA V9.S4, V8.S4, V2.S4
+ VLD1.P 16(R0), [V10.S4]
+ VLD1.P 16(R1), [V11.S4]
+ VFMLA V11.S4, V10.S4, V3.S4
+ SUB $16, R2
+ B loop16
+merge:
+ WORD $0x4E21D400
+ WORD $0x4E23D442
+ WORD $0x4E22D400
+loop4:
+ CMP $4, R2
+ BLT reduce
+ VLD1.P 16(R0), [V4.S4]
+ VLD1.P 16(R1), [V5.S4]
+ VFMLA V5.S4, V4.S4, V0.S4
+ SUB $4,R2
+ B loop4
+reduce:
+ WORD $0x6E20D400
+ WORD $0x6E20D400
+tail:
+ CBZ R2,done
+ FMOVS (R0),F4
+ FMOVS (R1),F5
+ FMADDS F4,F0,F5,F0
+ ADD $4,R0
+ ADD $4,R1
+ SUB $1,R2
+ B tail
+done:
+ FMOVS F0,ret+24(FP)
+ RET

@@ -1,36 +1,39 @@
-.PHONY: all build_shell test lint bench clean
+.PHONY: setup build run test test-race test-checkptr vet lint bench compat clean
 
-export GOEXPERIMENT=arenas
+RUNTIME_PACKAGES := .,./angular,./dot,./euclidean,./manhattan,./hamming,./internal/backend,./internal/codec,./internal/core,./internal/engine,./internal/metric,./cmd/precision
 
-PROJECT_NAME := "goannoy"
-BUILD_DIR := "bin"
-CMD_SHELL := "./cmd/shell"
-TEST_DIR := "./tests"
-TEST_TIMEOUT := 720s
-COVERAGE_FILE := "coverage.out"
+setup:
+	go mod download
 
-all: build_shell test lint
+build:
+	go build -o bin/precision.out ./cmd/precision
+	go build -o bin/shell.out ./cmd/shell
 
-build: build_shell
-
-build_shell:
-	@echo "Building $(PROJECT_NAME) shell command..."
-	@go build -o $(BUILD_DIR)/$(PROJECT_NAME) $(CMD_SHELL)
+run:
+	go run ./cmd/precision
 
 test:
-	@echo "Running tests with timeout $(TEST_TIMEOUT) and generating coverage..."
-	@go test -timeout $(TEST_TIMEOUT) -coverprofile=$(COVERAGE_FILE) $(TEST_DIR)/... -v -coverpkg ./...
-	@go tool cover -func=$(COVERAGE_FILE)
+	go test -timeout 120s -coverpkg=$(RUNTIME_PACKAGES) -coverprofile=coverage.out ./...
+	go run ./internal/cmd/covercheck -profile coverage.out
 
-lint:
-	@echo "Running lint checks..."
-	@golangci-lint run ./...
+test-race:
+	go test -race ./...
+
+test-checkptr:
+	go test -gcflags=all=-d=checkptr=2 ./...
+
+vet:
+	go vet ./...
+
+lint: vet
+	@test -z "$$(gofmt -l $$(git ls-files '*.go') | head -1)"
 
 bench:
-	@echo "Running benchmarks..."
-	@go test -bench=. -run=none ./...
+	go test ./bench -run '^$$' -bench . -benchmem
+
+compat:
+	go test -tags cppcompat ./compat -v
 
 clean:
-	@echo "Cleaning build artifacts and coverage information..."
-	@rm -rf $(BUILD_DIR) $(COVERAGE_FILE)
-	@rm -rf tests/*.ann *.ann results.txt tests/results.txt
+	go clean ./...
+	rm -f bin/precision.out bin/shell.out coverage.out

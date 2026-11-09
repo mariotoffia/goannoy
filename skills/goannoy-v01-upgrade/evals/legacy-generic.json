@@ -1,0 +1,5 @@
+{
+  "id": "legacy-generic",
+  "prompt": "Upgrade builder.Index[float32,uint32]().AngularDistance(3).UseMultiWorkerPolicy().MmapIndexAllocator(); AddItem; Build(10,-1); CreateContext; GetNnsByVector. Supply compilable replacements and a report. Earlier tags are unknown.",
+  "assertions": ["Checked signed32 ID conversion precedes casts", "Uses angular builder and immutable index", "Workers(0) is a valid automatic option", "Reusable per-caller searcher and caller-owned result buffer", "Focused build/search tests execute", "No invented historical version range"]
+}

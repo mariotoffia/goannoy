@@ -1,0 +1,5 @@
+{
+  "id": "legacy-direct-index",
+  "prompt": "Upgrade a direct index.New Manhattan consumer with float64 vectors, unchecked uint64 external IDs, custom allocator/random/sorter, and40 callers. Earlier tags are unknown. Supply compiling functions and an actionable report.",
+  "assertions": ["Concrete manhattan package", "Explicit float64 accuracy decision and finite/range checks", "Rejects IDs at or above MaxInt32 before conversion for Add", "Custom behaviors are manual blockers, not silently dropped", "Report separates mechanical edits from per-caller follow-ups", "Tests exercise overflow and search behavior"]
+}
