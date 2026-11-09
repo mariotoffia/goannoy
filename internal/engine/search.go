@@ -6,6 +6,7 @@ import (
 	"github.com/mariotoffia/goannoy/internal/core"
 	"github.com/mariotoffia/goannoy/internal/metric"
 	"math"
+	"unsafe"
 )
 
 // Searcher is scratch owned by one caller; Index remains immutable.
@@ -17,6 +18,24 @@ type Searcher struct {
 }
 
 var positiveInfinity = float32(math.Inf(1))
+
+// PrepareResults bounds allocation while preserving the original AutoSearchK
+// budget when the requested result count is larger than the index.
+func (s *Searcher) PrepareResults(limit int, k goannoy.SearchK) ([]goannoy.Result, goannoy.SearchK, error) {
+	if limit < 0 || limit > math.MaxInt/int(unsafe.Sizeof(goannoy.Result{})) {
+		return nil, k, goannoy.ErrInvalidOption
+	}
+	if k == goannoy.AutoSearchK && limit > 0 {
+		trees := len(s.index.info.Roots)
+		if limit > math.MaxInt/trees {
+			return nil, k, goannoy.ErrInvalidSearchK
+		}
+		k = goannoy.SearchK(limit * trees)
+	}
+	return make([]goannoy.Result, min(limit, s.index.info.Items)), k, nil
+}
+
+func finiteDistance(x float32) bool { return x <= math.MaxFloat32 && x >= -math.MaxFloat32 }
 
 func (i *Index) NewSearcher() *Searcher {
 	return &Searcher{index: i, query: make([]byte, i.layout.Stride)}

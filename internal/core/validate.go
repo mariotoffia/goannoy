@@ -53,6 +53,7 @@ func Validate(data []byte, l codec.Layout) (IndexInfo, error) {
 			info.Roots = info.Roots[:len(info.Roots)-1]
 		}
 	}
+	present := 0
 	for id := 0; id < count; id++ {
 		n := int(l.Descendants(data, id))
 		if n < 0 || n > items {
@@ -63,6 +64,7 @@ func Validate(data []byte, l codec.Layout) (IndexInfo, error) {
 				return bad("item node is not a leaf")
 			}
 			if n == 1 {
+				present++
 				if l.Kind == codec.Hamming {
 					if l.CheckWords(l.WordsAt(data, id)) != nil {
 						return bad("invalid hamming item")
@@ -82,22 +84,47 @@ func Validate(data []byte, l codec.Layout) (IndexInfo, error) {
 			}
 			continue
 		}
-		if n < 1 {
+		if n < 1 || present == 0 {
 			return bad("empty tree node")
 		}
 		if n <= l.LeafCapacity {
 			off := id*l.Stride + l.ChildrenOffset
 			for j := 0; j < n; j++ {
 				child := int(codec.I32(data, off+4*j))
+				// Compact sparse roots store maxID+1 as n_descendants but
+				// contain only present IDs followed by zero padding.
+				if n == items && j >= present && child == 0 {
+					continue
+				}
 				if child < 0 || child >= items || l.Descendants(data, child) != 1 {
 					return bad("invalid leaf ID")
 				}
 			}
 		} else {
-			for _, child := range l.Children(data, id) {
+			children := l.Children(data, id)
+			if children[0] == children[1] {
+				return bad("identical split children")
+			}
+			total := 0
+			for _, child := range children {
 				if child < 0 || int(child) >= id {
 					return bad("invalid or cyclic child edge")
 				}
+				cn := int(l.Descendants(data, int(child)))
+				// Upstream encodes a sparse single-item root like a split;
+				// its unused second child is the empty item-zero slot.
+				padding := n == items && present == 1 && child == 0
+				if cn >= n || (cn == 0 && !padding) {
+					return bad("invalid child descendant count")
+				}
+				total += cn
+			}
+			want := n
+			if n == items {
+				want = present
+			}
+			if total != want {
+				return bad("split descendant total mismatch")
 			}
 			if l.Kind == codec.Hamming {
 				if l.WordsAt(data, id)[0] >= uint64(l.Words*64) {

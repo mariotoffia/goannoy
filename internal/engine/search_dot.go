@@ -59,6 +59,9 @@ func (s *Searcher) searchDot(dst []goannoy.Result, budget int) (int, error) {
 		}
 		node := l.Node(data, int(id))
 		raw := -backend.Dot(q, l.Floats(node, 0))
+		if !finiteDistance(raw) {
+			return 0, goannoy.ErrInvalidVector
+		}
 		n = core.Offer(dst, n, goannoy.Result{ID: goannoy.ItemID(id), Distance: raw})
 	}
 	slices.SortFunc(dst[:n], compareResult)

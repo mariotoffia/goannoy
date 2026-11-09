@@ -101,6 +101,7 @@ func (b *Builder) BuildTo(ctx context.Context, path string) (*Index, error) {
 	if path == "" {
 		return nil, goannoy.ErrInvalidOption
 	}
+	var result *Index
 	err := core.AtomicWrite(path, func(f *os.File) error {
 		if b.Config.Resolve().Path != "" {
 			storage := core.NewMutableFile(f)
@@ -109,19 +110,31 @@ func (b *Builder) BuildTo(ctx context.Context, path string) (*Index, error) {
 			if err != nil {
 				return err
 			}
-			return closeErr
+			if closeErr != nil {
+				return closeErr
+			}
+		} else {
+			data, err := b.build(ctx)
+			if err != nil {
+				return err
+			}
+			if _, err := f.Write(data); err != nil {
+				return err
+			}
 		}
-		data, err := b.build(ctx)
-		if err != nil {
-			return err
-		}
-		_, err = f.Write(data)
+		// Validate and own the completed temporary snapshot before publishing it.
+		// Returning this mapping avoids reopening a concurrently replaced path.
+		var err error
+		result, err = OpenMetric(f.Name(), b.spec, b.layout.Dimension)
 		return err
 	})
 	if err != nil {
+		if result != nil {
+			_ = result.Close()
+		}
 		return nil, err
 	}
-	return OpenMetric(path, b.spec, b.layout.Dimension)
+	return result, nil
 }
 func (b *Builder) build(ctx context.Context) ([]byte, error) {
 	return b.buildWithStorage(ctx, nil)

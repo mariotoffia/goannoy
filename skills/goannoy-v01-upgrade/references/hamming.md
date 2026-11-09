@@ -12,6 +12,11 @@ b, err := hamming.NewBuilder(130)
 
 Word count is `(bitDimension+63)/64`. Bit j is `words[j/64] & (1 << (j%64))`; unused high bits must be zero. This matches Spotify's Python-wrapper packing (values >0.5 become set bits), but apply that threshold to old data only after confirming that it expresses the application's intended semantics. Do not invent source vectors from the dimension alone.
 
+The largest supported dimension is 2²⁴ bits so every returned Hamming count is
+exactly representable in float32. Larger standard files are not supported by
+this result contract; flag them as a manual blocker rather than changing their
+dimension or claiming preserved ordering.
+
 For an independently verified standard Spotify Hamming file:
 
 ```go

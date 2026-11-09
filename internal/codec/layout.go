@@ -48,6 +48,10 @@ func New(k Kind, dimension int) (Layout, error) {
 	if dimension < 1 || dimension > (math.MaxInt32-24)/8 {
 		return Layout{}, fmt.Errorf("%w: %d", goannoy.ErrInvalidDimension, dimension)
 	}
+	// Result distances are float32; every supported Hamming count must be exact.
+	if k == Hamming && dimension > 1<<24 {
+		return Layout{}, goannoy.ErrInvalidDimension
+	}
 	l := Layout{Kind: k, Dimension: dimension, ChildrenOffset: 4}
 	switch k {
 	case Angular:
@@ -110,10 +114,17 @@ func (l Layout) CheckFloats(v []float32) error {
 	if len(v) != l.Dimension {
 		return goannoy.ErrInvalidVector
 	}
+	var norm float32
 	for _, x := range v {
-		if math.IsNaN(float64(x)) || math.IsInf(float64(x), 0) {
+		// Ordered comparisons reject NaN/Inf without math.Abs bit casts,
+		// which checkptr=2 heap-promotes on some AMD64 toolchains.
+		if !(x >= -math.MaxFloat32 && x <= math.MaxFloat32) {
 			return goannoy.ErrInvalidVector
 		}
+		norm += float32(x * x)
+	}
+	if norm > math.MaxFloat32 {
+		return goannoy.ErrInvalidVector
 	}
 	return nil
 }

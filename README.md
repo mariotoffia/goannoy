@@ -74,6 +74,14 @@ Pinned C++ fixtures and Go-to-C++ cross-loading cover all five metrics. Serial b
 
 Hamming takes the **bit dimension**, not word count. A 130-bit vector is three uint64 words; only the low two bits of the final word may be used. Bit j is bit j%64 of word j/64. Old GoAnnoy float-per-bit Hamming files are incompatible and require rebuilding from original vectors. See [Hamming migration](skills/goannoy-v01-upgrade/references/hamming.md).
 
+Hamming dimensions are limited to **2²⁴ bits**, the exact-integer range of the
+float32 result contract. Float metrics require finite components and a finite
+float32 sum of squared components. A derived distance overflow returns
+`ErrInvalidVector`, not NaN/Inf results. Scale large vectors appropriately;
+finite-but-overflowing arithmetic is outside the supported numeric domain.
+Within that domain upstream float32 rounding behavior is retained, including
+angular norm-product overflow for unusually large magnitudes.
+
 ## Errors and extension
 
 Use `errors.Is` with the root package's sentinel errors. Wrong dimensions/vector lengths, non-finite vectors, invalid IDs/budgets/options, closed indexes, and corrupt files return errors. Nil build contexts are treated as `context.Background()`. Constructors select the metric, avoiding a metric-less builder state. Construct public values through their constructors/open methods.

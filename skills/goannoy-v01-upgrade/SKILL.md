@@ -18,7 +18,7 @@ Read [references/api-mapping.md](references/api-mapping.md) for source edits. Fo
 - Choose a concrete metric package: `angular`, `dot`, `euclidean`, `manhattan`, or `hamming`.
 - Separate a mutable builder from its immutable result. Handle constructor, `Add`, build, open, search, and close errors.
 - Check external IDs **before** converting to `goannoy.ItemID`. Builders accept `0 <= id < math.MaxInt32`; sparse IDs consume the addressable range.
-- Float metrics accept `[]float32`. Float64 narrowing needs an explicit accuracy decision, finite/range checks, and application-level recall tests; it is not precision-preserving.
+- Float metrics accept `[]float32` with finite squared norm. Float64 narrowing needs an explicit accuracy decision, finite/range checks, and application-level recall tests; it is not precision-preserving. Derived overflow returns `ErrInvalidVector`; Hamming dimensions above 2²⁴ are unsupported.
 - Replace batch contexts with one reusable searcher per concurrent caller. Result buffers are caller-owned; copy results retained across buffer reuse. Share indexes, not searchers or builders.
 - Preserve metric meaning: dot returns similarity (larger is better); the other metrics return distance.
 - Standard files are headerless. `Open(path, dimension)` needs the correct metric, dimension, and compatible layout; successful validation cannot prove provenance.

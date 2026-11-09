@@ -65,6 +65,9 @@ func (s *Searcher) searchAngular(dst []goannoy.Result, budget int) (int, error) 
 			qq = backend.Dot(v, v)
 		}
 		raw := angularRaw(backend.Dot(q, v), pp, qq)
+		if !finiteDistance(raw) {
+			return 0, goannoy.ErrInvalidVector
+		}
 		n = core.Offer(dst, n, goannoy.Result{ID: goannoy.ItemID(id), Distance: raw})
 	}
 	slices.SortFunc(dst[:n], compareResult)

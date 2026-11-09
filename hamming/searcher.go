@@ -24,10 +24,10 @@ func (s *Searcher) SearchInto(q []uint64, dst []goannoy.Result, k goannoy.Search
 	return s.inner.SearchWords(q, dst, k)
 }
 func (s *Searcher) Search(q []uint64, limit int, k goannoy.SearchK) ([]goannoy.Result, error) {
-	if limit < 0 {
-		return nil, goannoy.ErrInvalidOption
+	dst, k, err := s.inner.PrepareResults(limit, k)
+	if err != nil {
+		return nil, err
 	}
-	dst := make([]goannoy.Result, limit)
 	n, err := s.SearchInto(q, dst, k)
 	if err != nil {
 		return nil, err

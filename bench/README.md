@@ -46,3 +46,8 @@ NEON 9,334;8,210;8,541;8,367;9,107ns, median8,541ns (38.8% of22µs).
 Both remain0B/op,0allocs/op. Final build median153.48ms,25.78MB/op,
 about6,241allocs/op. See [release evidence](../docs/release/v0.1.0-benchmarks.md)
 for all samples, footprint and caveats.
+
+Post-review final medians: scalar21,541ns (59.8% of36µs), NEON9,764ns
+(44.4% of22µs), both0B/op and0allocs/op. Build174.00ms,25.78MB/op,
+6,241–6,244allocations. The release evidence retains every repeated sample;
+earlier numbers above are historical checkpoints, not the final gate result.
